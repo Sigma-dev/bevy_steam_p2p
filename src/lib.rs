@@ -279,10 +279,8 @@ fn steam_start(
     steam_client.networking_messages().session_request_callback(
         move |res| {
             if res.remote().steam_id() == Some(steam_id) {
-                println!("local");
                 return;
             }
-            println!("Accepted");
             match res.accept() {
                 true => println!("Succesfully accepted"),
                 false => println!("Failed to accept"),
@@ -290,7 +288,12 @@ fn steam_start(
         }
     );
     steam_client.networking_messages().session_failed_callback(
-        |res| {
+        move |res| {
+            if let Some(id) = res.identity_remote() {
+                if id.steam_id() == Some(steam_id) {
+                    return;
+                }
+            }
             println!("Session Failed: {:?}", res.end_reason().unwrap_or(NetConnectionEnd::Other(-42)));
         }
     );
