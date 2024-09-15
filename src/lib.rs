@@ -15,10 +15,11 @@ impl Plugin for SteamP2PPlugin {
         app
         .add_plugins(SteamworksPlugin::init_app(480).unwrap())
         .add_plugins(NetworkedMovablePlugin)
-        .add_systems(Startup, steam_start)
+        .add_systems(PreStartup, steam_start)
         .add_systems(Update, (steam_system, steam_events, receive_messages))
         .add_systems(FixedUpdate, handle_networked_transform)
-        .add_event::<PositionUpdate>();
+        .add_event::<PositionUpdate>()
+        .add_event::<LobbyJoined>();
     }
 }
 
@@ -78,8 +79,7 @@ impl SteamP2PClient {
     pub fn send_to_owner(&self, data: &NetworkData) -> Result<(), String> {
         let lobby_id = self.get_lobby_id()?;
         let owner = self.get_lobby_owner()?;
-        self.send_message(data, owner);
-        Ok(())
+        return self.send_message(data, owner);
     }
     pub fn send_message(&self, data: &NetworkData, target: SteamId) -> Result<(), String> {
         if !self.is_in_lobby() { return Err("Not in a lobby".to_string()); };
@@ -89,6 +89,7 @@ impl SteamP2PClient {
         let data_arr = serialized.as_slice();
         let network_identity = NetworkingIdentity::new_steam_id(target);
         let res = self.steam_client.networking_messages().send_message_to_user(network_identity, SendFlags::RELIABLE, data_arr, 0);
+        println!("Here2 {:?}", res);
         match res {
             Ok(_) => return Ok(()),
             Err(err) => return Err(format!("Message error: {}", err.to_string())),
@@ -125,6 +126,11 @@ impl SteamP2PClient {
         self.instantiation_id += 1;
         return id;
     }
+}
+
+#[derive(Event)]
+pub struct LobbyJoined {
+    lobby_id: LobbyId
 }
 
 #[derive(PartialEq)]
@@ -260,11 +266,13 @@ fn receive_messages(
 
 fn steam_system(
     mut client: ResMut<SteamP2PClient>,
+    mut event_writer: EventWriter<LobbyJoined>
 ) { 
     let rx = client.channel.rx.clone();
 
     if let Ok(lobby_id) = rx.try_recv() {
         client.lobby_status = LobbyStatus::InLobby(lobby_id);
+        event_writer.send(LobbyJoined { lobby_id });
         println!("Joined Lobby: {}", lobby_id.raw());
     }
 }
