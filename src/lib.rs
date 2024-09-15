@@ -8,9 +8,9 @@ use networked_movable::{ NetworkedMovable, NetworkedMovablePlugin};
 use ::serde::{Deserialize, Serialize};
 use steamworks::{networking_types::{ NetConnectionEnd, NetworkingIdentity, SendFlags}, LobbyChatUpdate};
 mod networked_movable;
-pub struct SteamNetworkPlugin;
+pub struct SteamP2PPlugin;
 
-impl Plugin for SteamNetworkPlugin {
+impl Plugin for SteamP2PPlugin {
     fn build(&self, app: &mut App) {
         app
         .add_plugins(SteamworksPlugin::init_app(480).unwrap())
