@@ -273,10 +273,15 @@ fn steam_start(
     steam_client: Res<Client>,
     mut commands: Commands,
 ) {
-    println!("Connected: {}", steam_client.user().steam_id().raw());
+    let steam_id = steam_client.user().steam_id();
+    println!("Connected: {}", steam_id.raw());
     steam_client.networking_utils().init_relay_network_access();
     steam_client.networking_messages().session_request_callback(
         |res| {
+            if (res.remote().is_local_host()) {
+                println!("Is local host");
+                return;
+            }
             println!("Accepted");
             match res.accept() {
                 true => println!("Succesfully accepted"),
@@ -292,7 +297,7 @@ fn steam_start(
     let (tx, rx) = flume::unbounded();
 
     commands.insert_resource(SteamP2PClient {
-        id: steam_client.user().steam_id(),
+        id: steam_id,
         lobby_status: LobbyStatus::OutOfLobby,
         steam_client: steam_client.clone(),
         channel: LobbyIdCallbackChannel { tx, rx },
