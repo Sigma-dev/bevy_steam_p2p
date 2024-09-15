@@ -4,16 +4,17 @@ use bevy::*;
 use prelude::*;
 use bevy_steamworks::*;
 use flume::{Receiver, Sender};
-use movable::Movable;
+use networked_movable::{ NetworkedMovable, NetworkedMovablePlugin};
 use ::serde::{Deserialize, Serialize};
 use steamworks::{networking_types::{ NetConnectionEnd, NetworkingIdentity, SendFlags}, LobbyChatUpdate};
-mod movable;
+mod networked_movable;
 pub struct SteamNetworkPlugin;
 
 impl Plugin for SteamNetworkPlugin {
     fn build(&self, app: &mut App) {
         app
         .add_plugins(SteamworksPlugin::init_app(480).unwrap())
+        .add_plugins(NetworkedMovablePlugin)
         .add_systems(Startup, steam_start)
         .add_systems(Update, (steam_system, steam_events, receive_messages))
         .add_systems(FixedUpdate, handle_networked_transform)
@@ -22,7 +23,7 @@ impl Plugin for SteamNetworkPlugin {
 }
 
 #[derive(Resource)]
-pub struct NetworkClient {
+pub struct SteamP2PClient {
     pub id: SteamId,
     pub lobby_status: LobbyStatus,
     steam_client: bevy_steamworks::Client,
@@ -30,7 +31,7 @@ pub struct NetworkClient {
     instantiation_id: u32,
 }
 
-impl NetworkClient {
+impl SteamP2PClient {
     pub fn create_lobby(&self) {
         let tx = self.channel.tx.clone();
         if self.lobby_status != LobbyStatus::OutOfLobby { return; };
@@ -173,7 +174,7 @@ pub struct LobbyIdCallbackChannel {
     pub rx: Receiver<LobbyId>
 }
 
-fn lobby_joined(client: &mut ResMut<NetworkClient>, info: &LobbyChatUpdate) {
+fn lobby_joined(client: &mut ResMut<SteamP2PClient>, info: &LobbyChatUpdate) {
     println!("Somebody joined your lobby: {:?}", info.user_changed);
 }
 
@@ -196,13 +197,13 @@ fn instantiate(
             },
             network_id.clone(),
             NetworkedTransform{synced: true, target: pos},
-            Movable { speed: 10. }
+            NetworkedMovable { speed: 10. }
         ));
     }
 }
 
 fn handle_networked_transform(
-    client: Res<NetworkClient>,
+    client: Res<SteamP2PClient>,
     mut networked_transform_query: Query<(&mut Transform, &NetworkIdentity, &mut NetworkedTransform)>,
     mut ev_reader: EventReader<PositionUpdate>,
     time: Res<Time>
@@ -227,7 +228,7 @@ fn handle_networked_transform(
 }
 
 fn receive_messages(
-    mut client: ResMut<NetworkClient>, 
+    mut client: ResMut<SteamP2PClient>, 
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
@@ -258,7 +259,7 @@ fn receive_messages(
 }
 
 fn steam_system(
-    mut client: ResMut<NetworkClient>,
+    mut client: ResMut<SteamP2PClient>,
 ) { 
     let rx = client.channel.rx.clone();
 
@@ -290,7 +291,7 @@ fn steam_start(
     );
     let (tx, rx) = flume::unbounded();
 
-    commands.insert_resource(NetworkClient {
+    commands.insert_resource(SteamP2PClient {
         id: steam_client.user().steam_id(),
         lobby_status: LobbyStatus::OutOfLobby,
         steam_client: steam_client.clone(),
@@ -301,7 +302,7 @@ fn steam_start(
 
 fn steam_events(
     mut evs: EventReader<SteamworksEvent>,
-    mut client: ResMut<NetworkClient>,
+    mut client: ResMut<SteamP2PClient>,
     network_query: Query<(Entity, &NetworkIdentity)>,
     mut commands: Commands,
 ) {

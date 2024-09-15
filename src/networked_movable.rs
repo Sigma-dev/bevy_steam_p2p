@@ -1,25 +1,25 @@
 use bevy::*;
 use prelude::*;
 
-use crate::{NetworkClient, NetworkIdentity};
+use crate::{SteamP2PClient, NetworkIdentity};
 
 #[derive(Component)]
-pub struct Movable {
+pub struct NetworkedMovable {
     pub speed: f32
 }
 
-pub struct MovablePlugin;
+pub struct NetworkedMovablePlugin;
 
-impl Plugin for MovablePlugin {
+impl Plugin for NetworkedMovablePlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Update, movable);
+        app.add_systems(Update, handle_networked_movable);
     }
 }
 
-fn movable(
-    mut transform_query: Query<(&mut Transform, Option<&NetworkIdentity>, &Movable)>,
+fn handle_networked_movable(
+    mut transform_query: Query<(&mut Transform, Option<&NetworkIdentity>, &NetworkedMovable)>,
     keys: Res<ButtonInput<KeyCode>>,
-    client: Option<Res<NetworkClient>>,
+    client: Option<Res<SteamP2PClient>>,
     time: Res<Time>,
 ) {
     for (mut movable_transform, network_identity, movable) in transform_query.iter_mut() {
