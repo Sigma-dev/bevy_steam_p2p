@@ -277,9 +277,9 @@ fn steam_start(
     println!("Connected: {}", steam_id.raw());
     steam_client.networking_utils().init_relay_network_access();
     steam_client.networking_messages().session_request_callback(
-        |res| {
-            if (res.remote().is_local_host()) {
-                println!("Is local host");
+        move |res| {
+            if res.remote().steam_id() == Some(steam_id) {
+                println!("local");
                 return;
             }
             println!("Accepted");
