@@ -72,7 +72,7 @@ impl SteamP2PClient {
             if only_others && player == self.id {
                 continue;
             }
-            self.send_message(&data, player);
+            self.send_message(&data, player).map_err(|e| println!("Message error: {e}"));
         }
         return Ok(()); 
     }
@@ -89,11 +89,7 @@ impl SteamP2PClient {
         let data_arr = serialized.as_slice();
         let network_identity = NetworkingIdentity::new_steam_id(target);
         let res = self.steam_client.networking_messages().send_message_to_user(network_identity, SendFlags::RELIABLE, data_arr, 0);
-        println!("Here2 {:?}", res);
-        match res {
-            Ok(_) => return Ok(()),
-            Err(err) => return Err(format!("Message error: {}", err.to_string())),
-        }
+        return res.map_err(|e| e.to_string());
     }
     pub fn is_in_lobby(&self) -> bool {
         return self.lobby_status != LobbyStatus::OutOfLobby;
@@ -285,11 +281,12 @@ fn steam_start(
     println!("Connected: {}", steam_id.raw());
     steam_client.networking_utils().init_relay_network_access();
     steam_client.networking_messages().session_request_callback(
-        move |res| {
-            if res.remote().steam_id() == Some(steam_id) {
+        move |session_request| {
+            if session_request.remote().steam_id() == Some(steam_id) {
+                session_request.accept();
                 return;
             }
-            match res.accept() {
+            match session_request.accept() {
                 true => println!("Succesfully accepted"),
                 false => println!("Failed to accept"),
             }

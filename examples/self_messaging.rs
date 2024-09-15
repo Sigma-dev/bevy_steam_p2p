@@ -26,10 +26,14 @@ fn startup(
 
 fn lobby_joined(
     mut event_reader: EventReader<LobbyJoined>,
-    mut client: ResMut<SteamP2PClient>
+    mut client: ResMut<SteamP2PClient>,
+    keys: Res<ButtonInput<KeyCode>>,
 ) {
+    if keys.just_pressed(KeyCode::KeyT) {
+        client.instantiate(FilePath(0),Vec3 {x:1., y:2., z: 1.}).unwrap_or_else(|e| eprintln!("Instantiation error: {e}"));
+    }
     for ev in event_reader.read() {
-        client.instantiate(FilePath(0),Vec3 {x:1., y:2., z: 1.}).unwrap_or_else(|e| eprintln!("Instantiation error: {e}"));
-        client.instantiate(FilePath(0),Vec3 {x:1., y:2., z: 1.}).unwrap_or_else(|e| eprintln!("Instantiation error: {e}"));
+        //client.instantiate(FilePath(0),Vec3 {x:1., y:2., z: 1.}).unwrap_or_else(|e| eprintln!("Instantiation error: {e}"));
+        //client.instantiate(FilePath(0),Vec3 {x:1., y:2., z: 1.}).unwrap_or_else(|e| eprintln!("Instantiation error: {e}"));
     }
 }
