@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 bevy = { version = "0.14.0" }
 bevy-steamworks = { git = "https://github.com/Sigma-dev/bevy_steamworks", version = "0.11", features = ["serde"] }
-steamworks = "0.11.0"
+steamworks = { git = "https://github.com/Noxime/steamworks-rs" }
 flume = "0.11.0"
 bevy_egui = "0.29.0"
 serde = "1.0.209"
