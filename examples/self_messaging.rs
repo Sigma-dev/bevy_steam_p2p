@@ -1,4 +1,5 @@
 use bevy::*;
+use client::SteamP2PClient;
 use prelude::*;
 use bevy_steam_p2p::*;
 
@@ -31,9 +32,5 @@ fn lobby_joined(
 ) {
     if keys.just_pressed(KeyCode::KeyT) {
         client.instantiate(FilePath(0),Vec3 {x:1., y:2., z: 1.}).unwrap_or_else(|e| eprintln!("Instantiation error: {e}"));
-    }
-    for ev in event_reader.read() {
-        //client.instantiate(FilePath(0),Vec3 {x:1., y:2., z: 1.}).unwrap_or_else(|e| eprintln!("Instantiation error: {e}"));
-        //client.instantiate(FilePath(0),Vec3 {x:1., y:2., z: 1.}).unwrap_or_else(|e| eprintln!("Instantiation error: {e}"));
     }
 }

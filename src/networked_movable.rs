@@ -1,7 +1,7 @@
 use bevy::*;
 use prelude::*;
 
-use crate::{SteamP2PClient, NetworkIdentity};
+use crate::{ client::SteamP2PClient, NetworkIdentity };
 
 #[derive(Component)]
 pub struct NetworkedMovable {
