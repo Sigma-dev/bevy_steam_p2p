@@ -74,6 +74,7 @@ pub enum NetworkData {
     Instantiate(NetworkIdentity, FilePath, Vec3), //NetworkId of created object, filepath of prefab, starting position
     PositionUpdate(NetworkIdentity, Vec3), //NetworkId of receiver, new position
     Destroy(NetworkIdentity), //NetworkId of object to be destroyed
+    DebugMessage(String), //Make the receiving client print the message
 }
 
 fn lobby_joined(client: &mut ResMut<SteamP2PClient>, info: &LobbyChatUpdate) {
@@ -149,6 +150,7 @@ fn handle_network_data(
             NetworkData::Handshake => {
                 println!("Received handshake");
             },
+            NetworkData::DebugMessage(message) => println!("Debug: {message}")
         }
     }
 }
