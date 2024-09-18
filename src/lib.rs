@@ -18,8 +18,8 @@ impl Plugin for SteamP2PPlugin {
         .add_plugins(SteamworksPlugin::init_app(480).unwrap())
         .add_plugins(NetworkedMovablePlugin)
         .add_systems(PreStartup, steam_start)
-        .add_systems(Update, (handle_channels, steam_events, receive_messages, handle_network_data))
-        .add_systems(FixedUpdate, handle_networked_transform)
+        .add_systems(Update, (handle_channels, steam_events, receive_messages, handle_network_data, handle_instantiate))
+        .add_systems(FixedUpdate, (handle_networked_transform))
         .add_event::<PositionUpdate>()
         .add_event::<LobbyJoined>()
         .add_event::<NetworkPacket>();
@@ -57,7 +57,7 @@ pub struct NetworkedTransform {
     pub target: Vec3,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct FilePath(pub u32);
 
 #[derive(Event)]
@@ -79,40 +79,44 @@ fn lobby_joined(client: &mut ResMut<SteamP2PClient>, info: &LobbyChatUpdate) {
     println!("Somebody joined your lobby: {:?}", info.user_changed);
 }
 
-fn instantiate(
-    network_id: NetworkIdentity,
-    path: FilePath,
-    pos: Vec3,
-    commands: &mut Commands,
-    meshes: &mut ResMut<Assets<Mesh>>,
-    materials: &mut ResMut<Assets<StandardMaterial>>,
+fn handle_instantiate(
+    mut evs_network: EventReader<NetworkPacket>,
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    println!("Instantiation");
-    if path.0 == 0 {
-        commands.spawn((
-            PbrBundle {
-            mesh: meshes.add(Cuboid::new(1.0, 1.0, 1.0)),
-            material: materials.add(Color::srgb_u8(124, 144, 255)),
-            transform: Transform::from_translation(pos),
-            ..default()
-            },
-            network_id.clone(),
-            NetworkedTransform{synced: true, target: pos},
-            NetworkedMovable { speed: 10. }
-        ));
+    for ev in evs_network.read() {
+        println!("Instantiation");
+        let NetworkData::Instantiate(ref network_identity, ref path, ref pos) = ev.data else { continue; };
+
+        if (*path == FilePath(0)) {
+            commands.spawn((
+                PbrBundle {
+                mesh: meshes.add(Cuboid::new(1.0, 1.0, 1.0)),
+                material: materials.add(Color::srgb_u8(124, 144, 255)),
+                transform: Transform::from_translation(*pos),
+                ..default()
+                },
+                network_identity.clone(),
+                NetworkedTransform{synced: true, target: *pos},
+                NetworkedMovable { speed: 10. }
+            ));
+        }
     }
 }
 
 fn handle_networked_transform(
     client: Res<SteamP2PClient>,
+    mut evs_update: EventReader<PositionUpdate>,
     mut networked_transform_query: Query<(&mut Transform, &NetworkIdentity, &mut NetworkedTransform)>,
-    mut ev_reader: EventReader<PositionUpdate>,
     time: Res<Time>
 ) {
     let mut updates = Vec::new();
-    for ev in ev_reader.read() {
-        updates.push(ev)
+    
+    for ev in evs_update.read() {
+        updates.push(ev);
     }
+
     for (mut transform, network_identity, mut networked_transform) in networked_transform_query.iter_mut() {
         for update in &updates {
             if update.network_identity == *network_identity {
@@ -138,7 +142,7 @@ fn handle_network_data(
     for ev in evs_network.read() { 
         match ev.data.clone() {
             NetworkData::SendObjectData(id, action_id, action_data) => println!("Action"),
-            NetworkData::Instantiate(id, prefab_path, pos) => instantiate(id, prefab_path, pos, &mut commands, &mut meshes, &mut materials),
+            NetworkData::Instantiate(id, prefab_path, pos) => {},// instantiate(id, prefab_path, pos, &mut commands, &mut meshes, &mut materials),
             NetworkData::PositionUpdate(id, pos) => {ev_pos_update.send(PositionUpdate { network_identity: id, new_position: pos }); },
             NetworkData::Destroy(id) => println!("Destroyed"),
             NetworkData::Handshake => {
