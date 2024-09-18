@@ -129,7 +129,7 @@ fn handle_networked_transform(
             transform.translation = transform.translation.lerp(networked_transform.target, 10. * time.delta_seconds());
             continue; 
         };
-        client.send_message_others(NetworkData::PositionUpdate(*network_identity, transform.translation));
+        client.send_message_others(NetworkData::PositionUpdate(*network_identity, transform.translation), SendFlags::UNRELIABLE);
     }
 }
 

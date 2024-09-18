@@ -62,32 +62,32 @@ impl SteamP2PClient {
         self.steam_client.matchmaking().leave_lobby(lobby);
         self.lobby_status = LobbyStatus::OutOfLobby;
     }
-    pub fn send_message_all(&self, data: NetworkData) -> Result<(), String> {
+    pub fn send_message_all(&self, data: NetworkData, flags: SendFlags) -> Result<(), String> {
         self.packet_channel.tx.send(NetworkPacket { data: data.clone(), sender: self.id }).map_err(|e| println!("{e:?}"));
-        return self.send_message_others(data)
+        return self.send_message_others(data, flags)
     }
-    pub fn send_message_others(&self, data: NetworkData) -> Result<(), String> {
+    pub fn send_message_others(&self, data: NetworkData, flags: SendFlags) -> Result<(), String> {
         let lobby_id = self.get_lobby_id()?;
         for player in self.steam_client.matchmaking().lobby_members(lobby_id) {
             if player == self.id {
                 continue;
             }
-            self.send_message(&data, player).map_err(|e| println!("Message error: {e}"));
+            self.send_message(&data, player, flags).map_err(|e| println!("Message error: {e}"));
         }
         return Ok(()); 
     }
-    pub fn send_to_owner(&self, data: &NetworkData) -> Result<(), String> {
+    pub fn send_to_owner(&self, data: &NetworkData, flags: SendFlags) -> Result<(), String> {
         let lobby_id = self.get_lobby_id()?;
         let owner = self.get_lobby_owner()?;
-        return self.send_message(data, owner);
+        return self.send_message(data, owner, flags);
     }
-    pub fn send_message(&self, data: &NetworkData, target: SteamId) -> Result<(), String> {
+    pub fn send_message(&self, data: &NetworkData, target: SteamId, flags: SendFlags) -> Result<(), String> {
         if !self.is_in_lobby() { return Err("Not in a lobby".to_string()); };
         let serialize_data = rmp_serde::to_vec(&data);
         let serialized = serialize_data.map_err(|err| err.to_string())?;
         let data_arr = serialized.as_slice();
         let network_identity = NetworkingIdentity::new_steam_id(target);
-        let res = self.steam_client.networking_messages().send_message_to_user(network_identity, SendFlags::RELIABLE, data_arr, 0);
+        let res = self.steam_client.networking_messages().send_message_to_user(network_identity, flags, data_arr, 0);
         return res.map_err(|e| e.to_string());
     }
     pub fn is_in_lobby(&self) -> bool {
@@ -114,7 +114,7 @@ impl SteamP2PClient {
         pos: Vec3,
     ) -> Result<(), String> {
         let instantiation_id = self.get_new_instantiation_id();
-        self.send_message_all(NetworkData::Instantiate(NetworkIdentity { id: instantiation_id, owner_id: self.id }, path, pos), )
+        self.send_message_all(NetworkData::Instantiate(NetworkIdentity { id: instantiation_id, owner_id: self.id }, path, pos), SendFlags::RELIABLE)
     }
     pub fn get_new_instantiation_id(&mut self) -> u32 {
         let id = self.instantiation_id;
