@@ -87,8 +87,8 @@ fn handle_instantiate(
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     for ev in evs_network.read() {
-        println!("Instantiation");
         let NetworkData::Instantiate(ref network_identity, ref path, ref pos) = ev.data else { continue; };
+        println!("Instantiation");
 
         if (*path == FilePath(0)) {
             commands.spawn((
