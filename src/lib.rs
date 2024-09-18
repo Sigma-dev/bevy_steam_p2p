@@ -1,7 +1,6 @@
 use std::{path::Path, time::Duration};
 
 use bevy::*;
-use client::{LobbyStatus, SteamP2PClient};
 use prelude::*;
 use bevy_steamworks::*;
 use flume::{Receiver, Sender};
@@ -10,6 +9,8 @@ use ::serde::{Deserialize, Serialize};
 use steamworks::{networking_types::{ NetConnectionEnd, NetworkingIdentity, SendFlags}, LobbyChatUpdate};
 mod networked_movable;
 pub mod client;
+pub use client::*;
+
 pub struct SteamP2PPlugin;
 
 impl Plugin for SteamP2PPlugin {
