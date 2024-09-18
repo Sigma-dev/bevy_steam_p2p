@@ -6,10 +6,11 @@ use bevy_steamworks::*;
 use flume::{Receiver, Sender};
 use networked_movable::{ NetworkedMovable, NetworkedMovablePlugin};
 use ::serde::{Deserialize, Serialize};
-use steamworks::{networking_types::{ NetConnectionEnd, NetworkingIdentity, SendFlags}, LobbyChatUpdate};
+use steamworks::{networking_types::{ NetConnectionEnd, NetworkingIdentity }, LobbyChatUpdate};
 mod networked_movable;
 pub mod client;
 pub use client::*;
+pub use steamworks::networking_types::SendFlags;
 
 pub struct SteamP2PPlugin;
 
