@@ -35,8 +35,8 @@ pub struct LobbyJoined {
 
 #[derive(Event, Clone)]
 pub struct NetworkPacket {
-    data: NetworkData,
-    sender: SteamId
+    pub data: NetworkData,
+    pub sender: SteamId
 }
 
 
