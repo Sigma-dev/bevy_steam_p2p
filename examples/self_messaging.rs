@@ -21,8 +21,7 @@ fn startup(
         ..default()
     });
 
-    client.create_lobby();
-    
+    client.create_lobby(8);
 }
 
 fn lobby_joined(
@@ -31,6 +30,6 @@ fn lobby_joined(
     keys: Res<ButtonInput<KeyCode>>,
 ) {
     if keys.just_pressed(KeyCode::KeyT) {
-        client.instantiate(FilePath(0),Vec3 {x:1., y:2., z: 1.}).unwrap_or_else(|e| eprintln!("Instantiation error: {e}"));
+        client.send_message_all(NetworkData::DebugMessage("Hello world !".to_owned()), SendFlags::RELIABLE);
     }
 }

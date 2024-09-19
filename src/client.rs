@@ -29,10 +29,10 @@ impl SteamP2PClient {
             instantiation_id: 0,
         }
     }
-    pub fn create_lobby(&self) {
+    pub fn create_lobby(&self, max_players: u32) {
         let tx = self.lobby_channel.tx.clone();
         if self.lobby_status != LobbyStatus::OutOfLobby { return; };
-        self.steam_client.matchmaking().create_lobby(LobbyType::Public, 2, 
+        self.steam_client.matchmaking().create_lobby(LobbyType::Public, max_players, 
             move |res| {
                 if let Ok(lobby_id) = res {
                     match tx.send(lobby_id) {
