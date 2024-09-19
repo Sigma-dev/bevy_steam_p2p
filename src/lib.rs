@@ -160,7 +160,7 @@ fn receive_messages(
     mut client: ResMut<SteamP2PClient>, 
     mut evs_network: EventWriter<NetworkPacket>
 ) {
-    let messages: Vec<steamworks::networking_types::NetworkingMessage<steamworks::ClientManager>> = client.steam_client.networking_messages().receive_messages_on_channel(0, 1);
+    let messages: Vec<steamworks::networking_types::NetworkingMessage<steamworks::ClientManager>> = client.steam_client.networking_messages().receive_messages_on_channel(0, 2048);
 
     for message in messages {
         let sender = message.identity_peer().steam_id().unwrap();
