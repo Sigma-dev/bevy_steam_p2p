@@ -32,4 +32,7 @@ fn lobby_joined(
     if keys.just_pressed(KeyCode::KeyT) {
         client.send_message_all(NetworkData::DebugMessage("Hello world !".to_owned()), SendFlags::RELIABLE);
     }
+    if keys.just_pressed(KeyCode::KeyR) {
+        client.instantiate(FilePath(0), Vec3::new(0., 2., 0.));
+    }
 }
