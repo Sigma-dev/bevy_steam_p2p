@@ -32,13 +32,13 @@ impl Plugin for SteamP2PPlugin {
 
 #[derive(Event)]
 pub struct LobbyJoined {
-    lobby_id: LobbyId
+    pub lobby_id: LobbyId
 }
 
 #[derive(Event)]
 pub struct UnhandledInstantiation {
-    network_identity: NetworkIdentity,
-    position: Vec3
+    pub network_identity: NetworkIdentity,
+    pub position: Vec3
 }
 
 #[derive(Event, Clone)]
