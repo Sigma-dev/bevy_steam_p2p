@@ -69,6 +69,12 @@ impl FilePath {
     }
 }
 
+impl std::cmp::PartialEq<&str> for FilePath {
+    fn eq(&self, other: &&str) -> bool {
+        self.0 == *other
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum NetworkData {
     Handshake,
@@ -111,7 +117,7 @@ fn handle_instantiate(
         let NetworkData::Instantiate(ref network_identity, ref pos) = ev.data else { continue; };
         println!("Instantiation");
 
-        if network_identity.instantiation_path == FilePath::new("InstantiationExample") {
+        if network_identity.instantiation_path == "InstantiationExample" {
             commands.spawn((
                 PbrBundle {
                 mesh: meshes.add(Cuboid::new(1.0, 1.0, 1.0)),
