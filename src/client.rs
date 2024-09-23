@@ -113,13 +113,16 @@ impl SteamP2PClient {
         path: FilePath,
         pos: Vec3,
     ) -> Result<(), String> {
-        let instantiation_id = self.get_new_instantiation_id();
-        self.send_message_all(NetworkData::Instantiate(NetworkIdentity { id: instantiation_id, owner_id: self.id, instantiation_path: path }, pos), SendFlags::RELIABLE)
+        let network_identity = self.generate_new_network_identity(path);
+        self.send_message_all(NetworkData::Instantiate(network_identity, pos), SendFlags::RELIABLE)
     }
-    pub fn get_new_instantiation_id(&mut self) -> u32 {
+    fn get_new_instantiation_id(&mut self) -> u32 {
         let id = self.instantiation_id;
         self.instantiation_id += 1;
         return id;
+    }
+    fn generate_new_network_identity(&mut self, path: FilePath) -> NetworkIdentity {
+        NetworkIdentity { id: self.get_new_instantiation_id(), owner_id: self.id, instantiation_path: path}
     }
 }
 
