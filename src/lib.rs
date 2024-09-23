@@ -1,6 +1,7 @@
 use std::{path::Path, time::Duration};
 
 use bevy::*;
+use math::VectorSpace;
 use networked_transform::{NetworkedTransform, NetworkedTransformPlugin, PositionUpdate};
 use prelude::*;
 use bevy_steamworks::*;
@@ -22,15 +23,22 @@ impl Plugin for SteamP2PPlugin {
         .add_plugins(SteamworksPlugin::init_app(480).unwrap())
         .add_plugins((NetworkedMovablePlugin, NetworkedTransformPlugin))
         .add_systems(PreStartup, steam_start)
-        .add_systems(Update, (handle_channels, steam_events, receive_messages, handle_network_data, handle_instantiate))
+        .add_systems(Update, (handle_channels, steam_events, receive_messages, handle_network_data, handle_instantiate, handle_joiner))
         .add_event::<LobbyJoined>()
-        .add_event::<NetworkPacket>();
+        .add_event::<NetworkPacket>()
+        .add_event::<UnhandledInstantiation>();
     }
 }
 
 #[derive(Event)]
 pub struct LobbyJoined {
     lobby_id: LobbyId
+}
+
+#[derive(Event)]
+pub struct UnhandledInstantiation {
+    network_identity: NetworkIdentity,
+    position: Vec3
 }
 
 #[derive(Event, Clone)]
@@ -44,7 +52,8 @@ pub struct NetworkPacket {
 #[derive(Component, Serialize, Deserialize, Debug, Copy, Clone, PartialEq)]
 pub struct NetworkIdentity {
     pub id: u32,
-    pub owner_id: SteamId
+    pub owner_id: SteamId,
+    pub instantiation_path: FilePath
 }
 
 #[derive(PartialEq)]
@@ -53,35 +62,52 @@ enum NetworkSync {
     Enabled(f32),
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Copy)]
 pub struct FilePath(pub u32);
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum NetworkData {
     Handshake,
     SendObjectData(NetworkIdentity, i8, Vec<u8>), //NetworkId of receiver, id of action, data of action
-    Instantiate(NetworkIdentity, FilePath, Vec3), //NetworkId of created object, filepath of prefab, starting position
+    Instantiate(NetworkIdentity, Vec3), //NetworkId of created object, filepath of prefab, starting position
     PositionUpdate(NetworkIdentity, Vec3), //NetworkId of receiver, new position
     Destroy(NetworkIdentity), //NetworkId of object to be destroyed
     NetworkMessage(String), //Message for arbitrary communication, to be avoided outside of development
     DebugMessage(String), //Make the receiving client print the message
 }
 
-fn lobby_joined(client: &mut ResMut<SteamP2PClient>, info: &LobbyChatUpdate) {
-    println!("Somebody joined your lobby: {:?}", info.user_changed);
+fn handle_joiner(
+    client: ResMut<SteamP2PClient>,
+    mut evs: EventReader<SteamworksEvent>,
+    networked_query: Query<(&NetworkIdentity, Option<&Transform>)>
+) {
+    for ev in evs.read() {
+        let SteamworksEvent::LobbyChatUpdate(update) = ev else {return;};
+        if update.member_state_change == bevy_steamworks::ChatMemberStateChange::Entered {
+            println!("Somebody joined your lobby: {:?}", update.user_changed);
+            if client.is_lobby_owner().unwrap() {
+                for (networked, transform) in networked_query.iter() {
+                    client.send_message(&NetworkData::Instantiate(*networked, transform.map(|t| t.translation).unwrap_or(Vec3::ZERO)), update.user_changed, SendFlags::RELIABLE);
+                }
+            }
+        }
+        
+    }
+    
 }
 
 fn handle_instantiate(
     mut evs_network: EventReader<NetworkPacket>,
+    mut evs_unhandled: EventWriter<UnhandledInstantiation>,
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     for ev in evs_network.read() {
-        let NetworkData::Instantiate(ref network_identity, ref path, ref pos) = ev.data else { continue; };
+        let NetworkData::Instantiate(ref network_identity, ref pos) = ev.data else { continue; };
         println!("Instantiation");
 
-        if (*path == FilePath(0)) {
+        if network_identity.instantiation_path == FilePath(0) {
             commands.spawn((
                 PbrBundle {
                 mesh: meshes.add(Cuboid::new(1.0, 1.0, 1.0)),
@@ -93,6 +119,8 @@ fn handle_instantiate(
                 NetworkedTransform{synced: true, target: *pos},
                 NetworkedMovable { speed: 10. }
             ));
+        } else {
+            evs_unhandled.send(UnhandledInstantiation { network_identity: *network_identity, position: *pos });
         }
     }
 }
@@ -107,7 +135,6 @@ fn handle_network_data(
     for ev in evs_network.read() { 
         match ev.data.clone() {
             NetworkData::SendObjectData(id, action_id, action_data) => println!("Action"),
-            NetworkData::Instantiate(id, prefab_path, pos) => {},// instantiate(id, prefab_path, pos, &mut commands, &mut meshes, &mut materials),
             NetworkData::PositionUpdate(id, pos) => {ev_pos_update.send(PositionUpdate { network_identity: id, new_position: pos }); },
             NetworkData::Destroy(id) => println!("Destroyed"),
             NetworkData::Handshake => {
@@ -199,7 +226,6 @@ fn steam_events(
             },
             SteamworksEvent::LobbyChatUpdate(info) => {
                 match info.member_state_change {
-                    bevy_steamworks::ChatMemberStateChange::Entered => lobby_joined(&mut client, info),
                     bevy_steamworks::ChatMemberStateChange::Left | bevy_steamworks::ChatMemberStateChange::Disconnected => {
                         println!("Other left lobby");
                         client.lobby_status = LobbyStatus::OutOfLobby;
@@ -209,7 +235,7 @@ fn steam_events(
                             }
                         }
                     }
-                    _ => println!("other")
+                    _ => println!("")
                 }
             },
             SteamworksEvent::SteamServersConnected(_) => println!("Connected to steam servers!"),
@@ -217,7 +243,7 @@ fn steam_events(
             SteamworksEvent::DownloadItemResult(_) => println!("Download item result"),
             SteamworksEvent::P2PSessionConnectFail(_) => println!("P2P Fail"),
             SteamworksEvent::P2PSessionRequest(_) => println!("P2P Session request"),
-            SteamworksEvent::PersonaStateChange(persona) => println!("Persona {}: {}", persona.steam_id.raw(), persona.flags.bits()),
+            SteamworksEvent::PersonaStateChange(persona) => {},
             SteamworksEvent::SteamServerConnectFailure(_) => println!("Connection failed"),
             SteamworksEvent::SteamServersDisconnected(_) => println!("Disconnected"),
             SteamworksEvent::TicketForWebApiResponse(_) => println!("Ticket"),
