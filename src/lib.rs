@@ -47,9 +47,7 @@ pub struct NetworkPacket {
     pub sender: SteamId
 }
 
-
-
-#[derive(Component, Serialize, Deserialize, Debug, Copy, Clone, PartialEq)]
+#[derive(Component, Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct NetworkIdentity {
     pub id: u32,
     pub owner_id: SteamId,
@@ -62,8 +60,14 @@ enum NetworkSync {
     Enabled(f32),
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Copy)]
-pub struct FilePath(pub u32);
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct FilePath(pub String);
+
+impl FilePath {
+    pub fn new(path: &str) -> FilePath {
+        FilePath(path.to_string())
+    }
+}
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum NetworkData {
@@ -87,7 +91,7 @@ fn handle_joiner(
             println!("Somebody joined your lobby: {:?}", update.user_changed);
             if client.is_lobby_owner().unwrap() {
                 for (networked, transform) in networked_query.iter() {
-                    client.send_message(&NetworkData::Instantiate(*networked, transform.map(|t| t.translation).unwrap_or(Vec3::ZERO)), update.user_changed, SendFlags::RELIABLE);
+                    client.send_message(&NetworkData::Instantiate(networked.clone(), transform.map(|t| t.translation).unwrap_or(Vec3::ZERO)), update.user_changed, SendFlags::RELIABLE);
                 }
             }
         }
@@ -107,7 +111,7 @@ fn handle_instantiate(
         let NetworkData::Instantiate(ref network_identity, ref pos) = ev.data else { continue; };
         println!("Instantiation");
 
-        if network_identity.instantiation_path == FilePath(0) {
+        if network_identity.instantiation_path == FilePath::new("InstantiationExample") {
             commands.spawn((
                 PbrBundle {
                 mesh: meshes.add(Cuboid::new(1.0, 1.0, 1.0)),
@@ -120,7 +124,7 @@ fn handle_instantiate(
                 NetworkedMovable { speed: 10. }
             ));
         } else {
-            evs_unhandled.send(UnhandledInstantiation { network_identity: *network_identity, position: *pos });
+            evs_unhandled.send(UnhandledInstantiation { network_identity: network_identity.clone(), position: *pos });
         }
     }
 }
