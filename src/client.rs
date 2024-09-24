@@ -60,6 +60,7 @@ impl SteamP2PClient {
         println!("Leave");
         self.steam_client.matchmaking().leave_lobby(lobby);
         self.lobby_status = LobbyStatus::OutOfLobby;
+        self.steam_bevy_channel.tx.send(ChannelPacket::LobbyLeft);
     }
     pub fn send_message_all(&self, data: NetworkData, flags: SendFlags) -> Result<(), String> {
         self.steam_bevy_channel.tx.send(ChannelPacket::NetworkPacket(NetworkPacket { data: data.clone(), sender: self.id })).map_err(|e| println!("{e:?}"));
