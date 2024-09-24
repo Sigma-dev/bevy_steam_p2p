@@ -254,9 +254,8 @@ fn steam_events(
                 match info.member_state_change {
                     bevy_steamworks::ChatMemberStateChange::Left | bevy_steamworks::ChatMemberStateChange::Disconnected => {
                         println!("Other left lobby");
-                        client.lobby_status = LobbyStatus::OutOfLobby;
                         for (entity, networked) in network_query.iter() {
-                            if (networked.owner_id == info.making_change) {
+                            if networked.owner_id == info.making_change {
                                 commands.entity(entity).despawn();
                             }
                         }
