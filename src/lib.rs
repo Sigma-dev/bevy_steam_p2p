@@ -26,7 +26,8 @@ impl Plugin for SteamP2PPlugin {
         .add_systems(Update, (handle_channels, steam_events, receive_messages, handle_network_data, handle_instantiate, handle_joiner))
         .add_event::<LobbyJoined>()
         .add_event::<NetworkPacket>()
-        .add_event::<UnhandledInstantiation>();
+        .add_event::<UnhandledInstantiation>()
+        .add_event::<LobbyLeft>();
     }
 }
 
@@ -34,6 +35,9 @@ impl Plugin for SteamP2PPlugin {
 pub struct LobbyJoined {
     pub lobby_id: LobbyId
 }
+
+#[derive(Event)]
+pub struct LobbyLeft;
 
 #[derive(Event)]
 pub struct UnhandledInstantiation {
@@ -103,7 +107,6 @@ fn handle_joiner(
         }
         
     }
-    
 }
 
 fn handle_instantiate(
@@ -150,7 +153,7 @@ fn handle_network_data(
             NetworkData::Handshake => {
                 println!("Received handshake");
             },
-            NetworkData::DebugMessage(message) => println!("Debug: {message}"),
+            NetworkData::DebugMessage(message) => println!("Debug message from {:?}: {}", ev.sender, message),
             _ => {}
         }
     }
@@ -176,17 +179,30 @@ fn receive_messages(
 
 fn handle_channels(
     mut client: ResMut<SteamP2PClient>,
-    mut event_writer: EventWriter<LobbyJoined>,
-    mut evs_network: EventWriter<NetworkPacket>
-) { 
-    if let Ok(lobby_id) = client.lobby_channel.rx.try_recv() {
-        client.lobby_status = LobbyStatus::InLobby(lobby_id);
-        event_writer.send(LobbyJoined { lobby_id });
-        println!("Joined Lobby: {}", lobby_id.raw());
-    }
-
-    if let Ok(packet) = client.packet_channel.rx.try_recv() {
-        evs_network.send(packet);
+    mut evs_joined: EventWriter<LobbyJoined>,
+    mut evs_network: EventWriter<NetworkPacket>,
+    mut evs_left: EventWriter<LobbyLeft>,
+    mut commands: Commands,
+    networked_query: Query<Entity, With<NetworkIdentity>>
+) {
+    if let Ok(channel_packet) = client.steam_bevy_channel.rx.try_recv() {
+        match channel_packet {
+            ChannelPacket::LobbyJoined(lobby_id) => {
+                client.lobby_status = LobbyStatus::InLobby(lobby_id);
+                evs_joined.send(LobbyJoined { lobby_id });
+                println!("Joined Lobby: {}", lobby_id.raw());
+            }
+            ChannelPacket::LobbyLeft => {
+                evs_left.send(LobbyLeft);
+                for entity in networked_query.iter() {
+                    commands.entity(entity).despawn();
+                }
+                println!("Left Lobby")
+            },
+            ChannelPacket::NetworkPacket(network_packet) => {
+                evs_network.send(network_packet);
+            },
+        }
     }
 }
 

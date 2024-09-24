@@ -4,13 +4,14 @@ use bevy_steamworks::*;
 
 use crate::*;
 
+
+
 #[derive(Resource)]
 pub struct SteamP2PClient {
     pub id: SteamId,
     pub lobby_status: LobbyStatus,
     pub steam_client: bevy_steamworks::Client,
-    pub(crate)  lobby_channel: LobbyIdCallbackChannel,
-    pub(crate) packet_channel: NetworkPacketChannel,
+    pub(crate) steam_bevy_channel: SteamBevyChannel,
     instantiation_id: u32,
 }
 
@@ -18,24 +19,22 @@ impl SteamP2PClient {
     pub fn new(steam_client: Client) -> SteamP2PClient {
         let steam_id = steam_client.user().steam_id();
         let (tx, rx) = flume::unbounded();
-        let (tx2, rx2) = flume::unbounded();
 
         SteamP2PClient {
             id: steam_id,
             lobby_status: LobbyStatus::OutOfLobby,
             steam_client: steam_client.clone(),
-            lobby_channel: LobbyIdCallbackChannel { tx, rx },
-            packet_channel: NetworkPacketChannel { tx: tx2, rx: rx2 },
+            steam_bevy_channel: SteamBevyChannel { tx, rx },
             instantiation_id: 0,
         }
     }
     pub fn create_lobby(&self, max_players: u32) {
-        let tx = self.lobby_channel.tx.clone();
+        let tx: Sender<ChannelPacket> = self.steam_bevy_channel.tx.clone();
         if self.lobby_status != LobbyStatus::OutOfLobby { return; };
         self.steam_client.matchmaking().create_lobby(LobbyType::Public, max_players, 
             move |res| {
                 if let Ok(lobby_id) = res {
-                    match tx.send(lobby_id) {
+                    match tx.send(ChannelPacket::LobbyJoined(lobby_id)) {
                         Ok(_) => {}
                         Err(_) => {
                         }
@@ -44,11 +43,11 @@ impl SteamP2PClient {
             });
     }
     pub fn join_lobby(&self, lobby_id: LobbyId) {
-        let tx = self.lobby_channel.tx.clone();
+        let tx = self.steam_bevy_channel.tx.clone();
         self.steam_client.matchmaking().join_lobby(lobby_id, 
             move |res| {
                 if let Ok(lobby_id) = res {
-                    match tx.send(lobby_id) {
+                    match tx.send(ChannelPacket::LobbyJoined(lobby_id)) {
                         Ok(_) => {}
                         Err(_) => {
                         }
@@ -63,7 +62,7 @@ impl SteamP2PClient {
         self.lobby_status = LobbyStatus::OutOfLobby;
     }
     pub fn send_message_all(&self, data: NetworkData, flags: SendFlags) -> Result<(), String> {
-        self.packet_channel.tx.send(NetworkPacket { data: data.clone(), sender: self.id }).map_err(|e| println!("{e:?}"));
+        self.steam_bevy_channel.tx.send(ChannelPacket::NetworkPacket(NetworkPacket { data: data.clone(), sender: self.id })).map_err(|e| println!("{e:?}"));
         return self.send_message_others(data, flags)
     }
     pub fn send_message_others(&self, data: NetworkData, flags: SendFlags) -> Result<(), String> {
@@ -126,14 +125,15 @@ impl SteamP2PClient {
     }
 }
 
-pub struct LobbyIdCallbackChannel {
-    pub tx: Sender<LobbyId>,
-    pub rx: Receiver<LobbyId>
+pub(crate) enum ChannelPacket {
+    LobbyJoined(LobbyId),
+    LobbyLeft,
+    NetworkPacket(NetworkPacket)
 }
 
-pub struct NetworkPacketChannel {
-    pub tx: Sender<NetworkPacket>,
-    pub rx: Receiver<NetworkPacket>
+pub(crate) struct SteamBevyChannel {
+    pub tx: Sender<ChannelPacket>,
+    pub rx: Receiver<ChannelPacket>
 }
 
 #[derive(PartialEq)]
