@@ -40,7 +40,7 @@ pub struct LobbyJoined {
 pub struct LobbyLeft;
 
 #[derive(Event)]
-pub (crate) struct NetworkedAction {
+pub struct NetworkedAction {
     pub network_identity: NetworkIdentity, 
     pub action_id: u8,
     pub action_data: Vec<u8>
