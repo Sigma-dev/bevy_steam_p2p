@@ -27,7 +27,8 @@ impl Plugin for SteamP2PPlugin {
         .add_event::<LobbyJoined>()
         .add_event::<NetworkPacket>()
         .add_event::<UnhandledInstantiation>()
-        .add_event::<LobbyLeft>();
+        .add_event::<LobbyLeft>()
+        .add_event::<NetworkedAction>();
     }
 }
 
