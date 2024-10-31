@@ -40,6 +40,13 @@ pub struct LobbyJoined {
 pub struct LobbyLeft;
 
 #[derive(Event)]
+pub (crate) struct NetworkedAction {
+    pub network_identity: NetworkIdentity, 
+    pub action_id: u8,
+    pub action_data: Vec<u8>
+}
+
+#[derive(Event)]
 pub struct UnhandledInstantiation {
     pub network_identity: NetworkIdentity,
     pub position: Vec3
@@ -82,7 +89,7 @@ impl std::cmp::PartialEq<&str> for FilePath {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum NetworkData {
     Handshake,
-    SendObjectData(NetworkIdentity, i8, Vec<u8>), //NetworkId of receiver, id of action, data of action
+    NetworkedAction(NetworkIdentity, u8, Vec<u8>), //NetworkId of receiver, id of action, data of action
     Instantiate(NetworkIdentity, Vec3), //NetworkId of created object, filepath of prefab, starting position
     PositionUpdate(NetworkIdentity, Vec3), //NetworkId of receiver, new position
     Destroy(NetworkIdentity), //NetworkId of object to be destroyed
@@ -144,11 +151,12 @@ fn handle_network_data(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut ev_pos_update: EventWriter<PositionUpdate>,
+    mut ev_networked_action: EventWriter<NetworkedAction>,
 ) {
     for ev in evs_network.read() { 
         match ev.data.clone() {
-            NetworkData::SendObjectData(id, action_id, action_data) => println!("Action"),
-            NetworkData::PositionUpdate(id, pos) => {ev_pos_update.send(PositionUpdate { network_identity: id, new_position: pos }); },
+            NetworkData::NetworkedAction(id, action_id, action_data) => {ev_networked_action.send(NetworkedAction { network_identity: id, action_id, action_data });},
+            NetworkData::PositionUpdate(id, pos) => {ev_pos_update.send(PositionUpdate { network_identity: id, new_position: pos });},
             NetworkData::Destroy(id) => println!("Destroyed"),
             NetworkData::Handshake => {
                 println!("Received handshake");
