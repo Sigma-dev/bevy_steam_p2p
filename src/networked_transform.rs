@@ -76,11 +76,10 @@ fn handle_networked_transform(
             }
         } else {
             client.send_message_others(NetworkData::TransformUpdate(
-                network_identity.clone(), 
-                if networked_transform.sync_position { Some(transform.translation) } else { None },
-                if networked_transform.sync_rotation { Some(transform.rotation) } else { None },
-                if networked_transform.sync_scale { Some(transform.scale) } 
-                else { None },
+                network_identity.clone(),
+                networked_transform.sync_position.then_some(transform.translation),
+                networked_transform.sync_rotation.then_some(transform.rotation),
+                networked_transform.sync_scale.then_some(transform.scale),
             ), SendFlags::UNRELIABLE);
         }
     }
