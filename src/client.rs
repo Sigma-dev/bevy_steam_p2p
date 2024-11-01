@@ -1,10 +1,9 @@
 use bevy::*;
 use prelude::*;
 use bevy_steamworks::*;
+use steamworks::networking_types::NetworkingIdentity;
 
 use crate::*;
-
-
 
 #[derive(Resource)]
 pub struct SteamP2PClient {

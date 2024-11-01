@@ -1,14 +1,12 @@
-use std::{path::Path, time::Duration};
 
 use bevy::*;
-use math::VectorSpace;
-use networked_transform::{NetworkedTransform, NetworkedTransformPlugin, PositionUpdate};
+use networked_transform::{NetworkedTransform, NetworkedTransformPlugin, TransformUpdate};
 use prelude::*;
 use bevy_steamworks::*;
 use flume::{Receiver, Sender};
 use networked_movable::{ NetworkedMovable, NetworkedMovablePlugin};
 use ::serde::{Deserialize, Serialize};
-use steamworks::{networking_types::{ NetConnectionEnd, NetworkingIdentity }, LobbyChatUpdate};
+use steamworks::networking_types:: NetConnectionEnd ;
 mod networked_movable;
 pub mod client;
 pub mod networked_transform;
@@ -92,7 +90,7 @@ pub enum NetworkData {
     Handshake,
     NetworkedAction(NetworkIdentity, u8, Vec<u8>), //NetworkId of receiver, id of action, data of action
     Instantiate(NetworkIdentity, Vec3), //NetworkId of created object, filepath of prefab, starting position
-    PositionUpdate(NetworkIdentity, Vec3), //NetworkId of receiver, new position
+    TransformUpdate(NetworkIdentity, Option<Vec3>, Option<Quat>, Option<Vec3>), //NetworkId of receiver, new position
     Destroy(NetworkIdentity), //NetworkId of object to be destroyed
     NetworkMessage(String), //Message for arbitrary communication, to be avoided outside of development
     DebugMessage(String), //Make the receiving client print the message
@@ -137,7 +135,7 @@ fn handle_instantiate(
                 ..default()
                 },
                 network_identity.clone(),
-                NetworkedTransform{synced: true, target: *pos},
+                NetworkedTransform::default(),
                 NetworkedMovable { speed: 10. }
             ));
         } else {
@@ -148,16 +146,13 @@ fn handle_instantiate(
 
 fn handle_network_data(
     mut evs_network: EventReader<NetworkPacket>,
-    mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
-    mut ev_pos_update: EventWriter<PositionUpdate>,
+    mut ev_pos_update: EventWriter<TransformUpdate>,
     mut ev_networked_action: EventWriter<NetworkedAction>,
 ) {
     for ev in evs_network.read() { 
         match ev.data.clone() {
             NetworkData::NetworkedAction(id, action_id, action_data) => {ev_networked_action.send(NetworkedAction { network_identity: id, action_id, action_data });},
-            NetworkData::PositionUpdate(id, pos) => {ev_pos_update.send(PositionUpdate { network_identity: id, new_position: pos });},
+            NetworkData::TransformUpdate(id, position, rotation, scale) => {ev_pos_update.send(TransformUpdate { network_identity: id, position, rotation, scale });},
             NetworkData::Destroy(id) => println!("Destroyed"),
             NetworkData::Handshake => {
                 println!("Received handshake");
@@ -169,7 +164,7 @@ fn handle_network_data(
 }
 
 fn receive_messages(
-    mut client: ResMut<SteamP2PClient>, 
+    client: Res<SteamP2PClient>, 
     mut evs_network: EventWriter<NetworkPacket>
 ) {
     let messages: Vec<steamworks::networking_types::NetworkingMessage<steamworks::ClientManager>> = client.steam_client.networking_messages().receive_messages_on_channel(0, 2048);
@@ -249,7 +244,7 @@ fn steam_start(
 
 fn steam_events(
     mut evs: EventReader<SteamworksEvent>,
-    mut client: ResMut<SteamP2PClient>,
+    client: Res<SteamP2PClient>,
     network_query: Query<(Entity, &NetworkIdentity)>,
     mut commands: Commands,
 ) {

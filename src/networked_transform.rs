@@ -1,5 +1,4 @@
 use bevy::*;
-use math::VectorSpace;
 use prelude::*;
 use steamworks::networking_types::SendFlags;
 
@@ -7,20 +6,26 @@ use crate::{ client::SteamP2PClient, NetworkData, NetworkIdentity };
 
 #[derive(Component)]
 pub struct NetworkedTransform {
-    pub synced: bool,
-    pub target: Vec3,
+    pub target_position: Vec3,
+    pub target_rotation: Quat,
+    pub target_scale: Vec3,
+    pub sync_position: bool,
+    pub sync_rotation: bool,
+    pub sync_scale: bool
 }
 
 impl Default for NetworkedTransform {
     fn default() -> Self {
-        Self { synced: true, target: Vec3::ZERO }
+        Self { target_position: Vec3::ZERO, target_rotation: Quat::default(), target_scale: Vec3::ZERO, sync_position: true, sync_rotation: true, sync_scale: true }
     }
 }
 
 #[derive(Event)]
-pub (crate) struct PositionUpdate {
+pub (crate) struct TransformUpdate {
     pub network_identity: NetworkIdentity, 
-    pub new_position: Vec3
+    pub position: Option<Vec3>,
+    pub rotation: Option<Quat>,
+    pub scale: Option<Vec3>,
 }
 
 pub struct NetworkedTransformPlugin;
@@ -29,13 +34,13 @@ impl Plugin for NetworkedTransformPlugin {
     fn build(&self, app: &mut App) {
         app
         .add_systems(FixedUpdate, handle_networked_transform)
-        .add_event::<PositionUpdate>();
+        .add_event::<TransformUpdate>();
     }
 }
 
 fn handle_networked_transform(
     client: Res<SteamP2PClient>,
-    mut evs_update: EventReader<PositionUpdate>,
+    mut evs_update: EventReader<TransformUpdate>,
     mut networked_transform_query: Query<(&mut Transform, &NetworkIdentity, &mut NetworkedTransform)>,
     time: Res<Time>
 ) {
@@ -48,15 +53,36 @@ fn handle_networked_transform(
     for (mut transform, network_identity, mut networked_transform) in networked_transform_query.iter_mut() {
         for update in &updates {
             if update.network_identity == *network_identity {
-                networked_transform.target = update.new_position;
+                if let Some(position) = update.position {
+                    networked_transform.target_position = position;
+                }
+                if let Some(rotation) = update.rotation {
+                    networked_transform.target_rotation = rotation;
+                }
+                if let Some(scale) = update.scale {
+                    networked_transform.target_scale = scale;
+                }
             }
         }
-        if !networked_transform.synced { continue; };
-        if client.id != network_identity.owner_id { 
-            transform.translation = transform.translation.lerp(networked_transform.target, 10. * time.delta_seconds());
-            continue; 
-        };
-        client.send_message_others(NetworkData::PositionUpdate(network_identity.clone(), transform.translation), SendFlags::UNRELIABLE);
+        if client.id != network_identity.owner_id {
+            if networked_transform.sync_position {
+                transform.translation = transform.translation.lerp(networked_transform.target_position, 10. * time.delta_seconds());
+            }
+            if networked_transform.sync_rotation {
+                transform.rotation = transform.rotation.lerp(networked_transform.target_rotation, 10. * time.delta_seconds());
+            }
+            if networked_transform.sync_scale {
+                transform.scale = transform.scale.lerp(networked_transform.target_scale, 10. * time.delta_seconds());
+            }
+        } else {
+            client.send_message_others(NetworkData::TransformUpdate(
+                network_identity.clone(), 
+                if networked_transform.sync_position { Some(transform.translation) } else { None },
+                if networked_transform.sync_rotation { Some(transform.rotation) } else { None },
+                if networked_transform.sync_scale { Some(transform.scale) } 
+                else { None },
+            ), SendFlags::UNRELIABLE);
+        }
     }
 }
 
@@ -64,7 +90,8 @@ fn on_add(
     trigger: Trigger<OnAdd, NetworkedTransform>,
     mut transform_query: Query<(&Transform, &mut NetworkedTransform)>
 ) {
-    println!("On Add");
     let Ok((transform, mut networked_transform)) = transform_query.get_mut(trigger.entity()) else { return; };
-    networked_transform.target = transform.translation;
+    networked_transform.target_position = transform.translation;
+    networked_transform.target_rotation = transform.rotation;
+    networked_transform.target_scale = transform.scale;
 }
