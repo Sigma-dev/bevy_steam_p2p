@@ -20,7 +20,7 @@ impl Default for NetworkedTransform {
     }
 }
 
-#[derive(Event)]
+#[derive(Event, Debug)]
 pub (crate) struct TransformUpdate {
     pub network_identity: NetworkIdentity, 
     pub position: Option<Vec3>,
@@ -47,6 +47,7 @@ fn handle_networked_transform(
     let mut updates = Vec::new();
     
     for ev in evs_update.read() {
+        println!("Received transform Data: {:?}", ev);
         updates.push(ev);
     }
 
@@ -75,12 +76,14 @@ fn handle_networked_transform(
                 transform.scale = transform.scale.lerp(networked_transform.target_scale, 10. * time.delta_seconds());
             }
         } else {
-            client.send_message_others(NetworkData::TransformUpdate(
+            let data = NetworkData::TransformUpdate(
                 network_identity.clone(),
                 networked_transform.sync_position.then_some(transform.translation),
                 networked_transform.sync_rotation.then_some(transform.rotation),
                 networked_transform.sync_scale.then_some(transform.scale),
-            ), SendFlags::UNRELIABLE);
+            );
+            println!("Sent transform Data: {:?}", data);
+            client.send_message_others(data, SendFlags::UNRELIABLE);
         }
     }
 }
