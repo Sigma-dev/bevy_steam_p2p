@@ -70,8 +70,9 @@ fn handle_networked_transform(
                 transform.translation = transform.translation.lerp(networked_transform.target_position, 10. * time.delta_seconds());
             }
             if networked_transform.sync_rotation {
-                println!("Old rotation {}, New Rotation {}", transform.rotation, networked_transform.target_rotation);
+                print!("Old rotation {}, Target Rotation {}", transform.rotation, networked_transform.target_rotation);
                 transform.rotation = transform.rotation.lerp(networked_transform.target_rotation, 10. * time.delta_seconds());
+                println!(" New Rotation {}", transform.rotation);
             }
             if networked_transform.sync_scale {
                 transform.scale = transform.scale.lerp(networked_transform.target_scale, 10. * time.delta_seconds());
