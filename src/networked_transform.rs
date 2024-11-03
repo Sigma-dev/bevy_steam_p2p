@@ -21,7 +21,7 @@ impl Default for NetworkedTransform {
 }
 
 impl NetworkedTransform {
-    fn new(sync_position: bool, sync_rotation: bool, sync_scale: bool) -> Self {
+    pub fn new(sync_position: bool, sync_rotation: bool, sync_scale: bool) -> Self {
         NetworkedTransform {
             sync_position,
             sync_rotation,
