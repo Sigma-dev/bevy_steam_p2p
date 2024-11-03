@@ -60,6 +60,7 @@ pub struct NetworkPacket {
 #[derive(Component, Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct NetworkIdentity {
     pub id: u32,
+    pub parent_id: Option<u32>,
     pub owner_id: SteamId,
     pub instantiation_path: FilePath
 }
@@ -89,7 +90,7 @@ impl std::cmp::PartialEq<&str> for FilePath {
 pub enum NetworkData {
     Handshake,
     NetworkedAction(NetworkIdentity, u8, Vec<u8>), //NetworkId of receiver, id of action, data of action
-    Instantiate(NetworkIdentity, Vec3), //NetworkId of created object, filepath of prefab, starting position
+    Instantiate(NetworkIdentity, Vec3), //NetworkId of created object, optional network id of parent, starting position
     TransformUpdate(NetworkIdentity, Option<Vec3>, Option<Quat>, Option<Vec3>), //NetworkId of receiver, new position
     Destroy(NetworkIdentity), //NetworkId of object to be destroyed
     NetworkMessage(String), //Message for arbitrary communication, to be avoided outside of development
@@ -125,7 +126,7 @@ fn handle_instantiate(
     for ev in evs_network.read() {
         let NetworkData::Instantiate(ref network_identity, ref pos) = ev.data else { continue; };
         println!("Instantiation");
-
+        //TODO: Add scene support once it comes out
         if network_identity.instantiation_path == "InstantiationExample" {
             commands.spawn((
                 PbrBundle {

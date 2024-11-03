@@ -39,6 +39,6 @@ fn update(
         client.send_message_all(NetworkData::DebugMessage("Hello world !".to_owned()), SendFlags::RELIABLE);
     }
     if keys.just_pressed(KeyCode::KeyR) {
-        client.instantiate(FilePath::new("InstantiationExample"), Vec3::new(0., 2., 0.));
+        client.instantiate(FilePath::new("InstantiationExample"), None, Vec3::new(0., 2., 0.));
     }
 }
