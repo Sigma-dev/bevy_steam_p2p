@@ -108,6 +108,7 @@ fn handle_joiner(
             println!("Somebody joined your lobby: {:?}", update.user_changed);
             if client.is_lobby_owner().unwrap() {
                 for (networked, transform) in networked_query.iter() {
+                    println!("Replicate: {:?}", networked);
                     client.send_message(&NetworkData::Instantiate(networked.clone(), transform.map(|t| t.translation).unwrap_or(Vec3::ZERO)), update.user_changed, SendFlags::RELIABLE);
                 }
             }
