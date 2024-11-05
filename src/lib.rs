@@ -47,10 +47,10 @@ pub struct NetworkedAction {
 }
 
 #[derive(Event)]
-pub struct NetworkInstantiation(InstantiationData);
+pub struct NetworkInstantiation(pub InstantiationData);
 
 #[derive(Event)]
-pub struct UnhandledInstantiation(InstantiationData);
+pub struct UnhandledInstantiation(pub InstantiationData);
 
 #[derive(Event, Clone)]
 pub struct NetworkPacket {
