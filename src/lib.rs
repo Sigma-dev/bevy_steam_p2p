@@ -21,12 +21,13 @@ impl Plugin for SteamP2PPlugin {
         .add_plugins(SteamworksPlugin::init_app(480).unwrap())
         .add_plugins((NetworkedMovablePlugin, NetworkedTransformPlugin))
         .add_systems(PreStartup, steam_start)
-        .add_systems(Update, (handle_channels, steam_events, receive_messages, handle_network_data, handle_instantiate, handle_joiner))
+        .add_systems(Update, (handle_channels, steam_events, receive_messages, handle_network_data, handle_instantiate, handle_queued_instantiations, handle_joiner))
         .add_event::<LobbyJoined>()
         .add_event::<NetworkPacket>()
         .add_event::<UnhandledInstantiation>()
         .add_event::<LobbyLeft>()
-        .add_event::<NetworkedAction>();
+        .add_event::<NetworkedAction>()
+        .add_event::<NetworkInstantiation>();
     }
 }
 
@@ -46,10 +47,10 @@ pub struct NetworkedAction {
 }
 
 #[derive(Event)]
-pub struct UnhandledInstantiation {
-    pub network_identity: NetworkIdentity,
-    pub position: Vec3
-}
+pub struct NetworkInstantiation(InstantiationData);
+
+#[derive(Event)]
+pub struct UnhandledInstantiation(InstantiationData);
 
 #[derive(Event, Clone)]
 pub struct NetworkPacket {
@@ -90,11 +91,17 @@ impl std::cmp::PartialEq<&str> for FilePath {
 pub enum NetworkData {
     Handshake,
     NetworkedAction(NetworkIdentity, u8, Vec<u8>), //NetworkId of receiver, id of action, data of action
-    Instantiate(NetworkIdentity, Vec3), //NetworkId of created object, optional network id of parent, starting position
+    Instantiate(InstantiationData), //NetworkId of created object, optional network id of parent, starting position
     TransformUpdate(NetworkIdentity, Option<Vec3>, Option<Quat>, Option<Vec3>), //NetworkId of receiver, new position
     Destroy(NetworkIdentity), //NetworkId of object to be destroyed
     NetworkMessage(String), //Message for arbitrary communication, to be avoided outside of development
     DebugMessage(String), //Make the receiving client print the message
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct InstantiationData {
+    pub network_identity: NetworkIdentity,
+    pub starting_pos: Vec3
 }
 
 fn handle_joiner(
@@ -109,46 +116,73 @@ fn handle_joiner(
             if client.is_lobby_owner().unwrap() {
                 for (networked, transform) in networked_query.iter() {
                     println!("Replicate: {:?}", networked);
-                    client.send_message(&NetworkData::Instantiate(networked.clone(), transform.map(|t| t.translation).unwrap_or(Vec3::ZERO)), update.user_changed, SendFlags::RELIABLE);
+                    client.send_message(&NetworkData::Instantiate(
+                        InstantiationData {
+                            network_identity: networked.clone(),
+                            starting_pos: transform.map(|t| t.translation).unwrap_or(Vec3::ZERO)
+                        }),
+                        update.user_changed,
+                        SendFlags::RELIABLE
+                    );
                 }
             }
         }
-        
     }
 }
 
 fn handle_instantiate(
-    mut evs_network: EventReader<NetworkPacket>,
+    mut client: ResMut<SteamP2PClient>, 
+    mut evs_network: EventReader<NetworkInstantiation>,
     mut evs_unhandled: EventWriter<UnhandledInstantiation>,
+    networked_query: Query<&NetworkIdentity>,
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    for ev in evs_network.read() {
-        let NetworkData::Instantiate(ref network_identity, ref pos) = ev.data else { continue; };
+    for NetworkInstantiation(data) in evs_network.read() {
+        if let Some(parent_id) = data.network_identity.parent_id {
+            if !networked_query.iter().any(|n| n.owner_id == data.network_identity.owner_id && n.id == parent_id) {
+                client.add_to_instantiation_queue(data.clone());
+            }
+        }
         println!("Instantiation");
         //TODO: Add scene support once it comes out
-        if network_identity.instantiation_path == "InstantiationExample" {
+        if data.network_identity.instantiation_path == "InstantiationExample" {
             commands.spawn((
                 PbrBundle {
                 mesh: meshes.add(Cuboid::new(1.0, 1.0, 1.0)),
                 material: materials.add(Color::srgb_u8(124, 144, 255)),
-                transform: Transform::from_translation(*pos),
+                transform: Transform::from_translation(data.starting_pos),
                 ..default()
                 },
-                network_identity.clone(),
+                data.network_identity.clone(),
                 NetworkedTransform::default(),
                 NetworkedMovable { speed: 10. }
             ));
         } else {
-            evs_unhandled.send(UnhandledInstantiation { network_identity: network_identity.clone(), position: *pos });
+            evs_unhandled.send(UnhandledInstantiation(data.clone()));
         }
     }
+}
+
+fn handle_queued_instantiations(
+    mut client: ResMut<SteamP2PClient>, 
+    mut evs_network: EventWriter<NetworkInstantiation>,
+    networked_query: Query<&NetworkIdentity>,
+) {
+    client.get_instantiation_queue().retain(|queued| {
+        if networked_query.iter().any(|n| n.owner_id == queued.network_identity.owner_id && n.id == queued.network_identity.parent_id.unwrap()) {
+            evs_network.send(NetworkInstantiation(queued.clone()));
+            return false;
+        }
+        return true;
+    });
 }
 
 fn handle_network_data(
     mut evs_network: EventReader<NetworkPacket>,
     mut ev_pos_update: EventWriter<TransformUpdate>,
+    mut ev_network_instantiation: EventWriter<NetworkInstantiation>,
     mut ev_networked_action: EventWriter<NetworkedAction>,
 ) {
     for ev in evs_network.read() { 
@@ -160,6 +194,7 @@ fn handle_network_data(
                 println!("Received handshake");
             },
             NetworkData::DebugMessage(message) => println!("Debug message from {:?}: {}", ev.sender, message),
+            NetworkData::Instantiate(data) => {ev_network_instantiation.send(NetworkInstantiation(data));},
             _ => {}
         }
     }

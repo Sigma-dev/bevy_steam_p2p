@@ -12,6 +12,7 @@ pub struct SteamP2PClient {
     pub steam_client: bevy_steamworks::Client,
     pub(crate) steam_bevy_channel: SteamBevyChannel,
     instantiation_id: u32,
+    queued_instantiations: Vec<InstantiationData>
 }
 
 impl SteamP2PClient {
@@ -25,6 +26,7 @@ impl SteamP2PClient {
             steam_client: steam_client.clone(),
             steam_bevy_channel: SteamBevyChannel { tx, rx },
             instantiation_id: 0,
+            queued_instantiations: Vec::new(),
         }
     }
     pub fn create_lobby(&self, max_players: u32) {
@@ -111,11 +113,11 @@ impl SteamP2PClient {
         &mut self,
         path: FilePath,
         parent_id: Option<u32>,
-        pos: Vec3,
+        starting_pos: Vec3,
     ) -> Result<NetworkIdentity, String> {
         let network_identity = self.generate_new_network_identity(path, parent_id);
         let clone = network_identity.clone();
-        self.send_message_all(NetworkData::Instantiate(network_identity, pos), SendFlags::RELIABLE);
+        self.send_message_all(NetworkData::Instantiate(InstantiationData { network_identity, starting_pos }), SendFlags::RELIABLE);
         Ok(clone)
     }
     pub fn get_new_instantiation_id(&mut self) -> u32 {
@@ -125,6 +127,12 @@ impl SteamP2PClient {
     }
     pub fn generate_new_network_identity(&mut self, path: FilePath, parent_id: Option<u32>) -> NetworkIdentity {
         NetworkIdentity { id: self.get_new_instantiation_id(), parent_id, owner_id: self.id, instantiation_path: path}
+    }
+    pub fn add_to_instantiation_queue(&mut self, instantiation_data: InstantiationData) {
+        self.queued_instantiations.push(instantiation_data);
+    }
+    pub fn get_instantiation_queue(&mut self) -> &mut Vec<InstantiationData> {
+        &mut self.queued_instantiations
     }
 }
 
