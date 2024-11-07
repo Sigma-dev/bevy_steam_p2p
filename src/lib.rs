@@ -143,6 +143,7 @@ fn handle_instantiate(
         if let Some(parent_id) = data.network_identity.parent_id {
             if !networked_query.iter().any(|n| n.owner_id == data.network_identity.owner_id && n.id == parent_id) {
                 client.add_to_instantiation_queue(data.clone());
+                continue;
             }
         }
         println!("Instantiation");
