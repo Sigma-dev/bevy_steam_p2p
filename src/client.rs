@@ -61,10 +61,10 @@ impl SteamP2PClient {
         println!("Leave");
         self.steam_client.matchmaking().leave_lobby(lobby);
         self.lobby_status = LobbyStatus::OutOfLobby;
-        self.steam_bevy_channel.tx.send(ChannelPacket::LobbyLeft);
+        self.steam_bevy_channel.tx.send(ChannelPacket::LobbyLeft).expect("Couldn't send LobbyLeft");
     }
     pub fn send_message_all(&self, data: NetworkData, flags: SendFlags) -> Result<(), String> {
-        self.steam_bevy_channel.tx.send(ChannelPacket::NetworkPacket(NetworkPacket { data: data.clone(), sender: self.id })).map_err(|e| println!("{e:?}"));
+        self.steam_bevy_channel.tx.send(ChannelPacket::NetworkPacket(NetworkPacket { data: data.clone(), sender: self.id })).expect("Couldn't message all");
         return self.send_message_others(data, flags)
     }
     pub fn send_message_others(&self, data: NetworkData, flags: SendFlags) -> Result<(), String> {
@@ -73,12 +73,12 @@ impl SteamP2PClient {
             if player == self.id {
                 continue;
             }
-            self.send_message(&data, player, flags).map_err(|e| println!("Message error: {e}"));
+            self.send_message(&data, player, flags).expect("Couldn't send message in send others");
         }
         return Ok(()); 
     }
     pub fn send_to_owner(&self, data: &NetworkData, flags: SendFlags) -> Result<(), String> {
-        let lobby_id = self.get_lobby_id()?;
+        if !self.is_in_lobby() { return Err("Not in a lobby".to_string()); };
         let owner = self.get_lobby_owner()?;
         return self.send_message(data, owner, flags);
     }
@@ -118,7 +118,7 @@ impl SteamP2PClient {
         let network_identity = self.generate_new_network_identity(path, parent_id);
         let clone = network_identity.clone();
         println!("starting_pos HI: {}", starting_pos);
-        self.send_message_all(NetworkData::Instantiate(InstantiationData { network_identity, starting_pos }), SendFlags::RELIABLE);
+        self.send_message_all(NetworkData::Instantiate(InstantiationData { network_identity, starting_pos }), SendFlags::RELIABLE).expect("Couldn't send instantiate message to all");
         Ok(clone)
     }
     pub fn get_new_instantiation_id(&mut self) -> u32 {

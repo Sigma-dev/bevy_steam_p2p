@@ -52,7 +52,7 @@ pub struct NetworkInstantiation(pub InstantiationData);
 #[derive(Event)]
 pub struct UnhandledInstantiation(pub InstantiationData);
 
-#[derive(Event, Clone)]
+#[derive(Event, Clone, Debug)]
 pub struct NetworkPacket {
     pub data: NetworkData,
     pub sender: SteamId
@@ -242,6 +242,7 @@ fn handle_channels(
                 println!("Left Lobby")
             },
             ChannelPacket::NetworkPacket(network_packet) => {
+                println!("Packet: {:?}", network_packet);
                 evs_network.send(network_packet);
             },
         }
