@@ -117,7 +117,6 @@ impl SteamP2PClient {
     ) -> Result<NetworkIdentity, String> {
         let network_identity = self.generate_new_network_identity(path, parent_id);
         let clone = network_identity.clone();
-        println!("starting_pos HI: {}", starting_pos);
         self.send_message_all(NetworkData::Instantiate(InstantiationData { network_identity, starting_pos }), SendFlags::RELIABLE).expect("Couldn't send instantiate message to all");
         Ok(clone)
     }

@@ -66,12 +66,6 @@ pub struct NetworkIdentity {
     pub instantiation_path: FilePath
 }
 
-#[derive(PartialEq)]
-enum NetworkSync {
-    Disabled,
-    Enabled(f32),
-}
-
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct FilePath(pub String);
 
@@ -123,7 +117,7 @@ fn handle_joiner(
                         }),
                         update.user_changed,
                         SendFlags::RELIABLE
-                    );
+                    ).expect("Couldn't send data to joiner");
                 }
             }
         }
@@ -190,12 +184,12 @@ fn handle_network_data(
         match ev.data.clone() {
             NetworkData::NetworkedAction(id, action_id, action_data) => {ev_networked_action.send(NetworkedAction { network_identity: id, action_id, action_data });},
             NetworkData::TransformUpdate(id, position, rotation, scale) => {ev_pos_update.send(TransformUpdate { network_identity: id, position, rotation, scale });},
-            NetworkData::Destroy(id) => println!("Destroyed"),
+            NetworkData::Destroy(_) => println!("Destroyed"),
             NetworkData::Handshake => {
                 println!("Received handshake");
             },
             NetworkData::DebugMessage(message) => println!("Debug message from {:?}: {}", ev.sender, message),
-            NetworkData::Instantiate(data) => {println!("starting_pos: {}", data.starting_pos); ev_network_instantiation.send(NetworkInstantiation(data));},
+            NetworkData::Instantiate(data) => {ev_network_instantiation.send(NetworkInstantiation(data));},
             _ => {}
         }
     }
@@ -242,7 +236,6 @@ fn handle_channels(
                 println!("Left Lobby")
             },
             ChannelPacket::NetworkPacket(network_packet) => {
-                println!("Packet: {:?}", network_packet);
                 evs_network.send(network_packet);
             },
         }
@@ -311,7 +304,7 @@ fn steam_events(
             SteamworksEvent::DownloadItemResult(_) => println!("Download item result"),
             SteamworksEvent::P2PSessionConnectFail(_) => println!("P2P Fail"),
             SteamworksEvent::P2PSessionRequest(_) => println!("P2P Session request"),
-            SteamworksEvent::PersonaStateChange(persona) => {},
+            SteamworksEvent::PersonaStateChange(_) => {},
             SteamworksEvent::SteamServerConnectFailure(_) => println!("Connection failed"),
             SteamworksEvent::SteamServersDisconnected(_) => println!("Disconnected"),
             SteamworksEvent::TicketForWebApiResponse(_) => println!("Ticket"),

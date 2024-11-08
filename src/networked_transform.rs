@@ -45,6 +45,7 @@ impl Plugin for NetworkedTransformPlugin {
     fn build(&self, app: &mut App) {
         app
         .add_systems(FixedUpdate, handle_networked_transform)
+        .observe(on_add)
         .add_event::<TransformUpdate>();
     }
 }
@@ -92,7 +93,7 @@ fn handle_networked_transform(
                 networked_transform.sync_rotation.then_some(transform.rotation),
                 networked_transform.sync_scale.then_some(transform.scale),
             );
-            client.send_message_others(data, SendFlags::UNRELIABLE);
+            client.send_message_others(data, SendFlags::UNRELIABLE).expect("Couldn't send networked transform data");
         }
     }
 }

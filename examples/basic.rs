@@ -36,9 +36,9 @@ fn update(
         client.create_lobby(8);
     }
     if keys.just_pressed(KeyCode::KeyT) {
-        client.send_message_all(NetworkData::DebugMessage("Hello world !".to_owned()), SendFlags::RELIABLE);
+        client.send_message_all(NetworkData::DebugMessage("Hello world !".to_owned()), SendFlags::RELIABLE).expect("Couldn't send hello world message");
     }
     if keys.just_pressed(KeyCode::KeyR) {
-        client.instantiate(FilePath::new("InstantiationExample"), None, Vec3::new(0., 2., 0.));
+        client.instantiate(FilePath::new("InstantiationExample"), None, Vec3::new(0., 2., 0.)).expect("Couldn't spawn instantiation example");
     }
 }
