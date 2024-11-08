@@ -195,7 +195,7 @@ fn handle_network_data(
                 println!("Received handshake");
             },
             NetworkData::DebugMessage(message) => println!("Debug message from {:?}: {}", ev.sender, message),
-            NetworkData::Instantiate(data) => {ev_network_instantiation.send(NetworkInstantiation(data));},
+            NetworkData::Instantiate(data) => {println!("starting_pos: {}", data.starting_pos); ev_network_instantiation.send(NetworkInstantiation(data));},
             _ => {}
         }
     }
