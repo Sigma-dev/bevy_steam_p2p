@@ -49,6 +49,6 @@ fn handle_networked_movable(
         if keys.pressed(KeyCode::KeyE) {
             vec.y -= 1.0
         }
-        movable_transform.translation += vec * time.delta_seconds() * movable.speed;
+        movable_transform.translation += vec * time.delta_secs() * movable.speed;
     }
 }

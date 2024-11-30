@@ -45,7 +45,7 @@ impl Plugin for NetworkedTransformPlugin {
     fn build(&self, app: &mut App) {
         app
         .add_systems(FixedUpdate, handle_networked_transform)
-        .observe(on_add)
+        .add_observer(on_add)
         .add_event::<TransformUpdate>();
     }
 }
@@ -78,13 +78,13 @@ fn handle_networked_transform(
         }
         if client.id != network_identity.owner_id {
             if networked_transform.sync_position {
-                transform.translation = transform.translation.lerp(networked_transform.target_position, 10. * time.delta_seconds());
+                transform.translation = transform.translation.lerp(networked_transform.target_position, 10. * time.delta_secs());
             }
             if networked_transform.sync_rotation {
-                transform.rotation = transform.rotation.lerp(networked_transform.target_rotation, 10. * time.delta_seconds());
+                transform.rotation = transform.rotation.lerp(networked_transform.target_rotation, 10. * time.delta_secs());
             }
             if networked_transform.sync_scale {
-                transform.scale = transform.scale.lerp(networked_transform.target_scale, 10. * time.delta_seconds());
+                transform.scale = transform.scale.lerp(networked_transform.target_scale, 10. * time.delta_secs());
             }
         } else {
             let data = NetworkData::TransformUpdate(

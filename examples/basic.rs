@@ -3,8 +3,6 @@ use client::SteamP2PClient;
 use prelude::*;
 use bevy_steam_p2p::*;
 
-
-
 fn main() {
     App::new()
     .add_plugins(SteamP2PPlugin)
@@ -17,10 +15,10 @@ fn main() {
 fn startup(
     mut commands: Commands,
 ) {
-    commands.spawn(Camera3dBundle {
-        transform: Transform::from_xyz(5., 5., 5.).looking_at(Vec3::new(0.0, 0., 0.0), Vec3::Y),
-        ..default()
-    });
+    commands.spawn((
+        Camera3d::default(),
+        Transform::from_xyz(5., 5., 5.).looking_at(Vec3::new(0.0, 0., 0.0), Vec3::Y),
+    ));
 }
 
 /*

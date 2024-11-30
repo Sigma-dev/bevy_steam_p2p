@@ -144,12 +144,9 @@ fn handle_instantiate(
         //TODO: Add scene support once it comes out
         if data.network_identity.instantiation_path == "InstantiationExample" {
             commands.spawn((
-                PbrBundle {
-                mesh: meshes.add(Cuboid::new(1.0, 1.0, 1.0)),
-                material: materials.add(Color::srgb_u8(124, 144, 255)),
-                transform: Transform::from_translation(data.starting_pos),
-                ..default()
-                },
+                Mesh3d(meshes.add(Cuboid::new(1.0, 1.0, 1.0))),
+                MeshMaterial3d(materials.add(Color::srgb_u8(124, 144, 255))),
+                Transform::from_translation(data.starting_pos),
                 data.network_identity.clone(),
                 NetworkedTransform::default(),
                 NetworkedMovable { speed: 10. }
@@ -255,10 +252,7 @@ fn steam_start(
                 session_request.accept();
                 return;
             }
-            match session_request.accept() {
-                true => println!("Succesfully accepted"),
-                false => println!("Failed to accept"),
-            }
+            session_request.accept();
         }
     );
     steam_client.networking_messages().session_failed_callback(
@@ -312,8 +306,7 @@ fn steam_events(
             SteamworksEvent::UserStatsReceived(_) => println!("UserStatsReceived"),
             SteamworksEvent::UserStatsStored(_) => println!("User stats stored"),
             SteamworksEvent::ValidateAuthTicketResponse(_) => println!("Validate auth ticket"),
-            SteamworksEvent::NetworkingMessagesSessionRequest(_) => println!("Message session request"),
-            SteamworksEvent::RelayNetworkStatusCallback(_) => println!("Relay network status"),
+            SteamworksEvent::LobbyChatMsg(_) => println!("Lobby chat message received")
         }
     }
 }
