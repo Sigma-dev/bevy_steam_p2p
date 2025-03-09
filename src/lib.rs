@@ -241,21 +241,21 @@ fn handle_network_data(
 }
 
 fn receive_messages(client: Res<SteamP2PClient>, mut evs_network: EventWriter<NetworkPacket>) {
-    let messages: Vec<steamworks::networking_types::NetworkingMessage<steamworks::ClientManager>> =
-        client
-            .steam_client
-            .networking_messages()
-            .receive_messages_on_channel(0, 2048);
-
-    for message in messages {
-        let sender = message.identity_peer().steam_id().unwrap();
-        let serialized_data = message.data();
-        let data_try: Result<NetworkData, _> = rmp_serde::from_slice(serialized_data);
+    while client
+        .steam_client
+        .networking()
+        .is_p2p_packet_available()
+        .is_some()
+    {
+        let mut buf = [0; 4096];
+        let Some((sender, _)) = client.steam_client.networking().read_p2p_packet(&mut buf) else {
+            break;
+        };
+        let data_try: Result<NetworkData, _> = rmp_serde::from_slice(&buf);
 
         if let Ok(data) = data_try {
             evs_network.send(NetworkPacket { sender, data });
         }
-        drop(message); //not sure about usefullness, mentionned in steam docs as release
     }
 }
 
