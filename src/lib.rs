@@ -42,6 +42,7 @@ impl Plugin for SteamP2PPlugin {
             .add_event::<NetworkPacket>()
             .add_event::<UnhandledInstantiation>()
             .add_event::<LobbyLeft>()
+            .add_event::<OtherJoined>()
             .add_event::<NetworkedAction>()
             .add_event::<NetworkInstantiation>();
     }
@@ -51,6 +52,9 @@ impl Plugin for SteamP2PPlugin {
 pub struct LobbyJoined {
     pub lobby_id: LobbyId,
 }
+
+#[derive(Event)]
+pub struct OtherJoined(SteamId);
 
 #[derive(Event)]
 pub struct LobbyLeft;
@@ -326,6 +330,7 @@ fn steam_events(
     client: Res<SteamP2PClient>,
     network_query: Query<(Entity, &NetworkIdentity)>,
     mut commands: Commands,
+    mut other_joined_w: EventWriter<OtherJoined>,
 ) {
     for ev in evs.read() {
         match ev {
@@ -334,8 +339,10 @@ fn steam_events(
                 client.join_lobby(info.lobby_steam_id)
             }
             SteamworksEvent::LobbyChatUpdate(info) => match info.member_state_change {
-                bevy_steamworks::ChatMemberStateChange::Left
-                | bevy_steamworks::ChatMemberStateChange::Disconnected => {
+                ChatMemberStateChange::Entered => {
+                    other_joined_w.send(OtherJoined(info.user_changed));
+                }
+                ChatMemberStateChange::Left | ChatMemberStateChange::Disconnected => {
                     println!("Other left lobby");
                     for (entity, networked) in network_query.iter() {
                         if networked.owner_id == info.making_change {
