@@ -9,6 +9,14 @@ use crate::{NetworkData, SteamP2PClient};
 
 use super::event::Networked;
 
+pub struct NetworkedEventsPlugin;
+
+impl Plugin for NetworkedEventsPlugin {
+    fn build(&self, app: &mut App) {
+        app.insert_resource(NetworkedEventRegister::new());
+    }
+}
+
 pub trait NetworkedEvents {
     fn add_networked_event<T: Event + Serialize + DeserializeOwned + Copy>(&mut self) -> &mut Self;
 }
@@ -20,7 +28,8 @@ impl<'de> NetworkedEvents for App {
         self.add_systems(PostUpdate, networked_event_system::<T>);
         let mut register = self
             .world_mut()
-            .get_resource_or_insert_with::<NetworkedEventRegister>(NetworkedEventRegister::new);
+            .get_resource_mut::<NetworkedEventRegister>()
+            .unwrap();
         register.register::<T>();
         self
     }

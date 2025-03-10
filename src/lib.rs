@@ -2,7 +2,7 @@ use ::serde::{Deserialize, Serialize};
 use bevy::*;
 use bevy_steamworks::*;
 use flume::{Receiver, Sender};
-use networked_events::register::NetworkedEventRegister;
+use networked_events::register::{NetworkedEventRegister, NetworkedEventsPlugin};
 use networked_movable::{NetworkedMovable, NetworkedMovablePlugin};
 use networked_transform::{NetworkedTransform, NetworkedTransformPlugin, TransformUpdate};
 use prelude::*;
@@ -20,7 +20,11 @@ pub struct SteamP2PPlugin;
 impl Plugin for SteamP2PPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(SteamworksPlugin::init_app(480).unwrap())
-            .add_plugins((NetworkedMovablePlugin, NetworkedTransformPlugin))
+            .add_plugins((
+                NetworkedEventsPlugin,
+                NetworkedMovablePlugin,
+                NetworkedTransformPlugin,
+            ))
             .add_systems(PreStartup, steam_start)
             .add_systems(
                 Update,
