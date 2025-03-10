@@ -54,7 +54,7 @@ pub struct LobbyJoined {
 }
 
 #[derive(Event)]
-pub struct OtherJoined(SteamId);
+pub struct OtherJoined(pub SteamId);
 
 #[derive(Event)]
 pub struct LobbyLeft;
