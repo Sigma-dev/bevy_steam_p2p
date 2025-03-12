@@ -1,4 +1,3 @@
-use ::serde::{Deserialize, Serialize};
 use bevy::*;
 use bevy_steamworks::*;
 use flume::{Receiver, Sender};
@@ -13,6 +12,7 @@ pub mod client;
 pub mod networked_events;
 pub mod networked_transform;
 pub use client::*;
+pub use serde::{Deserialize, Serialize};
 pub use steamworks::networking_types::SendFlags;
 
 pub struct SteamP2PPlugin;
