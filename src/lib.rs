@@ -5,6 +5,7 @@ use networked_events::register::{NetworkedEventRegister, NetworkedEventsPlugin};
 use networked_movable::{NetworkedMovable, NetworkedMovablePlugin};
 use networked_transform::{NetworkedTransform, NetworkedTransformPlugin, TransformUpdate};
 use prelude::*;
+use serde::{Deserialize, Serialize};
 use steamworks::networking_types::NetConnectionEnd;
 mod networked_movable;
 
@@ -12,7 +13,7 @@ pub mod client;
 pub mod networked_events;
 pub mod networked_transform;
 pub use client::*;
-pub use serde::{Deserialize, Serialize};
+pub use serde;
 pub use steamworks::networking_types::SendFlags;
 
 pub struct SteamP2PPlugin;
