@@ -1,13 +1,12 @@
 use std::{any::TypeId, marker::PhantomData};
 
-use bevy::{ecs::event, prelude::*, utils::hashbrown::HashMap};
+use bevy::{prelude::*, utils::hashbrown::HashMap};
 use rmp_serde::from_slice;
-use serde::{de::DeserializeOwned, Serialize};
 use steamworks::networking_types::SendFlags;
 
 use crate::{NetworkData, SteamP2PClient};
 
-use super::event::Networked;
+use super::event::{Networked, NetworkedEvent};
 
 pub struct NetworkedEventsPlugin;
 
@@ -18,11 +17,11 @@ impl Plugin for NetworkedEventsPlugin {
 }
 
 pub trait NetworkedEvents {
-    fn add_networked_event<T: Event + Serialize + DeserializeOwned + Copy>(&mut self) -> &mut Self;
+    fn add_networked_event<T: NetworkedEvent>(&mut self) -> &mut Self;
 }
 
 impl<'de> NetworkedEvents for App {
-    fn add_networked_event<T: Event + Serialize + DeserializeOwned + Copy>(&mut self) -> &mut Self {
+    fn add_networked_event<T: NetworkedEvent>(&mut self) -> &mut Self {
         self.add_event::<T>();
         self.add_event::<Networked<T>>();
         self.add_systems(PostUpdate, networked_event_system::<T>);
@@ -35,15 +34,15 @@ impl<'de> NetworkedEvents for App {
     }
 }
 
-fn networked_event_system<T: Event + Serialize + DeserializeOwned + Copy>(
-    mut client: ResMut<SteamP2PClient>,
+fn networked_event_system<T: NetworkedEvent>(
+    client: Res<SteamP2PClient>,
     mut networked_event_r: EventReader<Networked<T>>,
     mut event_w: EventWriter<T>,
     networked_event_register: Res<NetworkedEventRegister>,
 ) {
     for ev in networked_event_r.read() {
         event_w.send(ev.event);
-        client.send_message_others(
+        let _ = client.send_message_others(
             NetworkData::NetworkedEvent(
                 rmp_serde::to_vec(&ev.event).unwrap(),
                 *networked_event_register
@@ -56,11 +55,11 @@ fn networked_event_system<T: Event + Serialize + DeserializeOwned + Copy>(
     }
 }
 
-pub struct NetworkedEventReader<T: Event + Serialize + DeserializeOwned + Copy> {
+pub struct NetworkedEventReader<T: NetworkedEvent> {
     _marker: PhantomData<T>,
 }
 
-impl<T: Event + Serialize + DeserializeOwned + Copy> NetworkedEventReader<T> {
+impl<T: NetworkedEvent> NetworkedEventReader<T> {
     fn new() -> NetworkedEventReader<T> {
         NetworkedEventReader {
             _marker: PhantomData,
@@ -88,7 +87,7 @@ impl NetworkedEventRegister {
         }
     }
 
-    pub fn register<T: Event + Serialize + DeserializeOwned + Copy>(&mut self) {
+    pub fn register<T: NetworkedEvent>(&mut self) {
         self.indexes.insert(TypeId::of::<T>(), self.counter);
         self.counter += 1;
         self.readers.push(|buffer: &[u8], commands: &mut Commands| {
