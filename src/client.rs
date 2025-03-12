@@ -1,7 +1,6 @@
 use bevy::*;
 use bevy_steamworks::*;
 use prelude::*;
-use steamworks::networking_types::NetworkingIdentity;
 
 use crate::*;
 

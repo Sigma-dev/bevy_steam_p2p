@@ -41,7 +41,9 @@ fn networked_event_system<T: NetworkedEvent>(
     networked_event_register: Res<NetworkedEventRegister>,
 ) {
     for ev in networked_event_r.read() {
-        event_w.send(ev.event);
+        if ev.emit_locally {
+            event_w.send(ev.event);
+        }
         let _ = client.send_message_others(
             NetworkData::Event(
                 rmp_serde::to_vec(&ev.event).unwrap(),
@@ -50,7 +52,7 @@ fn networked_event_system<T: NetworkedEvent>(
                     .get(&TypeId::of::<T>())
                     .unwrap(),
             ),
-            (SendFlags::RELIABLE),
+            SendFlags::RELIABLE,
         );
     }
 }

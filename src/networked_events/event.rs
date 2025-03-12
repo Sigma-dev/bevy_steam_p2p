@@ -10,6 +10,7 @@ where
     T: NetworkedEvent,
 {
     pub event: T,
+    pub emit_locally: bool,
 }
 
 impl<T> Networked<T>
@@ -17,6 +18,16 @@ where
     T: NetworkedEvent,
 {
     pub fn new(event: T) -> Self {
-        Networked { event }
+        Networked {
+            event,
+            emit_locally: true,
+        }
+    }
+
+    pub fn new_only_others(event: T) -> Self {
+        Networked {
+            event,
+            emit_locally: false,
+        }
     }
 }
