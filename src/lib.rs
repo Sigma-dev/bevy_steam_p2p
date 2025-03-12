@@ -104,7 +104,7 @@ impl std::cmp::PartialEq<&str> for FilePath {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum NetworkData {
     Handshake,
-    NetworkedEvent(Vec<u8>, u8),
+    Event(Vec<u8>, u8),
     NetworkedAction(NetworkIdentity, u8, Vec<u8>), //NetworkId of receiver, id of action, data of action
     Instantiate(InstantiationData), //NetworkId of created object, optional network id of parent, starting position
     TransformUpdate(NetworkIdentity, Option<Vec3>, Option<Quat>, Option<Vec3>), //NetworkId of receiver, new position
@@ -239,7 +239,7 @@ fn handle_network_data(
             NetworkData::Instantiate(data) => {
                 ev_network_instantiation.send(NetworkInstantiation(data));
             }
-            NetworkData::NetworkedEvent(data, index) => {
+            NetworkData::Event(data, index) => {
                 let reader = &register.readers[index as usize];
                 reader(&data, &mut commands)
             }

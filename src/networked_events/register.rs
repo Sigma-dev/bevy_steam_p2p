@@ -43,7 +43,7 @@ fn networked_event_system<T: NetworkedEvent>(
     for ev in networked_event_r.read() {
         event_w.send(ev.event);
         let _ = client.send_message_others(
-            NetworkData::NetworkedEvent(
+            NetworkData::Event(
                 rmp_serde::to_vec(&ev.event).unwrap(),
                 *networked_event_register
                     .indexes
