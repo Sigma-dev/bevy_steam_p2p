@@ -42,7 +42,7 @@ fn networked_event_system<T: NetworkedEvent>(
 ) {
     for ev in networked_event_r.read() {
         if ev.emit_locally {
-            event_w.send(ev.event);
+            event_w.send(ev.event.clone());
         }
         let _ = client.send_message_others(
             NetworkData::Event(

@@ -1,8 +1,8 @@
 use bevy::prelude::*;
 use serde::{de::DeserializeOwned, Serialize};
 
-pub trait NetworkedEvent: Event + Serialize + DeserializeOwned + Copy {}
-impl<T: Event + Serialize + DeserializeOwned + Copy> NetworkedEvent for T {}
+pub trait NetworkedEvent: Event + Serialize + DeserializeOwned + Clone {}
+impl<T: Event + Serialize + DeserializeOwned + Clone> NetworkedEvent for T {}
 
 #[derive(Event)]
 pub struct Networked<T>
