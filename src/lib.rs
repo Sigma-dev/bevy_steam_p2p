@@ -15,7 +15,7 @@ pub mod networked_transform;
 pub use client::*;
 pub use serde;
 pub use steamworks::networking_types::SendFlags;
-
+pub use steamworks::SteamId;
 pub struct SteamP2PPlugin;
 
 impl Plugin for SteamP2PPlugin {
