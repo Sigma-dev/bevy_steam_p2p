@@ -357,7 +357,10 @@ fn steam_events(
             SteamworksEvent::AuthSessionTicketResponse(_) => println!("Ticket response"),
             SteamworksEvent::DownloadItemResult(_) => println!("Download item result"),
             SteamworksEvent::P2PSessionConnectFail(_) => println!("P2P Fail"),
-            SteamworksEvent::P2PSessionRequest(_) => println!("P2P Session request"),
+            SteamworksEvent::P2PSessionRequest(request) => client
+                .steam_client
+                .networking()
+                .accept_p2p_session(request.remote),
             SteamworksEvent::PersonaStateChange(_) => {}
             SteamworksEvent::SteamServerConnectFailure(_) => println!("Connection failed"),
             SteamworksEvent::SteamServersDisconnected(_) => println!("Disconnected"),
