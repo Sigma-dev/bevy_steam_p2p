@@ -135,7 +135,7 @@ impl SteamP2PClient {
     pub fn instantiate(
         &mut self,
         path: FilePath,
-        parent_id: Option<u32>,
+        parent_id: Option<NetworkId>,
         starting_pos: Vec3,
     ) -> Result<NetworkIdentity, String> {
         let network_identity = self.generate_new_network_identity(path, parent_id);
@@ -150,15 +150,15 @@ impl SteamP2PClient {
         .expect("Couldn't send instantiate message to all");
         Ok(clone)
     }
-    pub fn get_new_instantiation_id(&mut self) -> u32 {
+    pub fn get_new_instantiation_id(&mut self) -> NetworkId {
         let id = self.instantiation_id;
         self.instantiation_id += 1;
-        return id;
+        return NetworkId(id);
     }
     pub fn generate_new_network_identity(
         &mut self,
         path: FilePath,
-        parent_id: Option<u32>,
+        parent_id: Option<NetworkId>,
     ) -> NetworkIdentity {
         NetworkIdentity {
             id: self.get_new_instantiation_id(),

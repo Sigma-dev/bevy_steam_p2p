@@ -79,10 +79,13 @@ pub struct NetworkPacket {
     pub sender: SteamId,
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct NetworkId(u32);
+
 #[derive(Component, Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct NetworkIdentity {
-    pub id: u32,
-    pub parent_id: Option<u32>,
+    pub id: NetworkId,
+    pub parent_id: Option<NetworkId>,
     pub owner_id: SteamId,
     pub instantiation_path: FilePath,
 }
@@ -162,10 +165,10 @@ fn handle_instantiate(
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     for NetworkInstantiation(data) in evs_network.read() {
-        if let Some(parent_id) = data.network_identity.parent_id {
+        if let Some(parent_id) = &data.network_identity.parent_id {
             if !networked_query
                 .iter()
-                .any(|n| n.owner_id == data.network_identity.owner_id && n.id == parent_id)
+                .any(|n| n.owner_id == data.network_identity.owner_id && n.id == *parent_id)
             {
                 client.add_to_instantiation_queue(data.clone());
                 continue;
@@ -196,7 +199,7 @@ fn handle_queued_instantiations(
     client.get_instantiation_queue().retain(|queued| {
         if networked_query.iter().any(|n| {
             n.owner_id == queued.network_identity.owner_id
-                && n.id == queued.network_identity.parent_id.unwrap()
+                && n.id == queued.network_identity.parent_id.clone().unwrap()
         }) {
             evs_network.send(NetworkInstantiation(queued.clone()));
             return false;
