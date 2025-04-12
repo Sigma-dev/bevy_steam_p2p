@@ -81,8 +81,8 @@ pub struct NetworkPacket {
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct NetworkId {
-    owner: SteamId,
-    index: u32,
+    pub owner: SteamId,
+    pub index: u32,
 }
 
 #[derive(Component, Serialize, Deserialize, Debug, Clone, PartialEq)]
