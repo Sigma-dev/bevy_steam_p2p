@@ -120,7 +120,7 @@ pub enum NetworkData {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct InstantiationData {
     pub network_identity: NetworkIdentity,
-    pub starting_pos: Vec3,
+    pub starting_transform: Transform,
 }
 
 fn handle_joiner(
@@ -141,9 +141,7 @@ fn handle_joiner(
                         .send_message(
                             &NetworkData::Instantiate(InstantiationData {
                                 network_identity: networked.clone(),
-                                starting_pos: transform
-                                    .map(|t| t.translation)
-                                    .unwrap_or(Vec3::ZERO),
+                                starting_transform: *transform.unwrap_or(&Transform::default()),
                             }),
                             update.user_changed,
                             SendFlags::RELIABLE,
@@ -180,7 +178,7 @@ fn handle_instantiate(
             commands.spawn((
                 Mesh3d(meshes.add(Cuboid::new(1.0, 1.0, 1.0))),
                 MeshMaterial3d(materials.add(Color::srgb_u8(124, 144, 255))),
-                Transform::from_translation(data.starting_pos),
+                data.starting_transform,
                 data.network_identity.clone(),
                 NetworkedTransform::default(),
                 NetworkedMovable { speed: 10. },

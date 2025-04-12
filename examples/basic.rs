@@ -55,7 +55,7 @@ fn update(
             .instantiate(
                 FilePath::new("InstantiationExample"),
                 None,
-                Vec3::new(0., 2., 0.),
+                Transform::from_translation(Vec3::new(0., 2., 0.)),
             )
             .expect("Couldn't spawn instantiation example");
     }

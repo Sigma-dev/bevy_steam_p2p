@@ -136,14 +136,14 @@ impl SteamP2PClient {
         &mut self,
         path: FilePath,
         parent_id: Option<NetworkId>,
-        starting_pos: Vec3,
+        starting_transform: Transform,
     ) -> Result<NetworkIdentity, String> {
         let network_identity = self.generate_new_network_identity(path, parent_id);
         let clone = network_identity.clone();
         self.send_message_all(
             NetworkData::Instantiate(InstantiationData {
                 network_identity,
-                starting_pos,
+                starting_transform,
             }),
             SendFlags::RELIABLE,
         )
