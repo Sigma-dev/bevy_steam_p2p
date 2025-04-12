@@ -80,13 +80,15 @@ pub struct NetworkPacket {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
-pub struct NetworkId(u32);
+pub struct NetworkId {
+    owner: SteamId,
+    index: u32,
+}
 
 #[derive(Component, Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct NetworkIdentity {
     pub id: NetworkId,
     pub parent_id: Option<NetworkId>,
-    pub owner_id: SteamId,
     pub instantiation_path: FilePath,
 }
 
@@ -166,7 +168,7 @@ fn handle_instantiate(
         if let Some(parent_id) = &data.network_identity.parent_id {
             if !networked_query
                 .iter()
-                .any(|n| n.owner_id == data.network_identity.owner_id && n.id == *parent_id)
+                .any(|n| n.id.owner == data.network_identity.id.owner && n.id == *parent_id)
             {
                 client.add_to_instantiation_queue(data.clone());
                 continue;
@@ -195,7 +197,7 @@ fn handle_queued_instantiations(
 ) {
     client.get_instantiation_queue().retain(|queued| {
         if networked_query.iter().any(|n| {
-            n.owner_id == queued.network_identity.owner_id
+            n.id.owner == queued.network_identity.id.owner
                 && n.id == queued.network_identity.parent_id.clone().unwrap()
         }) {
             evs_network.send(NetworkInstantiation(queued.clone()));
@@ -346,7 +348,7 @@ fn steam_events(
                 ChatMemberStateChange::Left | ChatMemberStateChange::Disconnected => {
                     println!("Other left lobby");
                     for (entity, networked) in network_query.iter() {
-                        if networked.owner_id == info.making_change {
+                        if networked.id.owner == info.making_change {
                             commands.entity(entity).despawn();
                         }
                     }

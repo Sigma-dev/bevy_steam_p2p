@@ -153,7 +153,10 @@ impl SteamP2PClient {
     pub fn get_new_instantiation_id(&mut self) -> NetworkId {
         let id = self.instantiation_id;
         self.instantiation_id += 1;
-        return NetworkId(id);
+        return NetworkId {
+            owner: self.id,
+            index: id,
+        };
     }
     pub fn generate_new_network_identity(
         &mut self,
@@ -163,7 +166,6 @@ impl SteamP2PClient {
         NetworkIdentity {
             id: self.get_new_instantiation_id(),
             parent_id,
-            owner_id: self.id,
             instantiation_path: path,
         }
     }

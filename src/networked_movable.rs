@@ -1,11 +1,11 @@
 use bevy::*;
 use prelude::*;
 
-use crate::{ client::SteamP2PClient, NetworkIdentity };
+use crate::{client::SteamP2PClient, NetworkIdentity};
 
 #[derive(Component)]
 pub struct NetworkedMovable {
-    pub speed: f32
+    pub speed: f32,
 }
 
 pub struct NetworkedMovablePlugin;
@@ -26,7 +26,7 @@ fn handle_networked_movable(
         let mut vec = Vec3::ZERO;
         if let Some(identity) = network_identity {
             if let Some(ref cli) = client {
-                if identity.owner_id != cli.id {
+                if identity.id.owner != cli.id {
                     continue;
                 }
             }
