@@ -172,7 +172,6 @@ fn handle_instantiate(
                 continue;
             }
         }
-        println!("Instantiation");
         //TODO: Add scene support once it comes out
         if data.network_identity.instantiation_path == "InstantiationExample" {
             commands.spawn((
