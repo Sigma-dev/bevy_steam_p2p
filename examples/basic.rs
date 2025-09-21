@@ -1,11 +1,11 @@
-use bevy::*;
+use bevy::prelude::*;
 use bevy_steam_p2p::{
     networked_events::{event::Networked, register::NetworkedEvents},
-    *,
+    FilePath, NetworkData,
 };
-use client::SteamP2PClient;
-use prelude::*;
+use bevy_steam_p2p::{SteamP2PClient, SteamP2PPlugin};
 use serde::{Deserialize, Serialize};
+use steamworks::networking_types::SendFlags;
 
 #[derive(Event, Serialize, Deserialize, Clone, Copy)]
 struct TestEvent {

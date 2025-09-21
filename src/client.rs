@@ -1,6 +1,5 @@
-use bevy::*;
+use bevy::prelude::*;
 use bevy_steamworks::*;
-use prelude::*;
 
 use crate::*;
 

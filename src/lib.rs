@@ -1,21 +1,22 @@
-use bevy::*;
+use bevy::prelude::*;
 use bevy_steamworks::*;
 use flume::{Receiver, Sender};
 use networked_events::register::{NetworkedEventRegister, NetworkedEventsPlugin};
 use networked_movable::{NetworkedMovable, NetworkedMovablePlugin};
 use networked_transform::{NetworkedTransform, NetworkedTransformPlugin, TransformUpdate};
-use prelude::*;
 use serde::{Deserialize, Serialize};
 use steamworks::networking_types::NetConnectionEnd;
-mod networked_movable;
 
 pub mod client;
 pub mod networked_events;
-pub mod networked_transform;
-pub use client::*;
-pub use serde;
-pub use steamworks::networking_types::SendFlags;
-pub use steamworks::SteamId;
+mod networked_movable;
+mod networked_transform;
+pub mod prelude;
+pub use client::SteamP2PClient;
+use steamworks::networking_types::SendFlags;
+use steamworks::SteamId;
+
+use crate::client::{ChannelPacket, LobbyStatus};
 pub struct SteamP2PPlugin;
 
 impl Plugin for SteamP2PPlugin {
