@@ -59,7 +59,7 @@ fn update(
             )
             .expect("Couldn't spawn instantiation example");
     }
-    if keys.just_pressed(KeyCode::KeyS) {
+    if keys.just_pressed(KeyCode::KeyY) {
         test_w.write(Networked::new(TestEvent { n: 42 }));
     }
 }
