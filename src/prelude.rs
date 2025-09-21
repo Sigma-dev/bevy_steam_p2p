@@ -1,1 +1,1 @@
-pub use crate::{LobbyJoined, NetworkIdentity, SteamP2PClient, UnhandledInstantiation};
+pub use crate::{FilePath, LobbyJoined, NetworkIdentity, SteamP2PClient, UnhandledInstantiation};
