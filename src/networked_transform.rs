@@ -126,7 +126,7 @@ fn on_add(
     trigger: Trigger<OnAdd, NetworkedTransform>,
     mut transform_query: Query<(&Transform, &mut NetworkedTransform)>,
 ) {
-    let Ok((transform, mut networked_transform)) = transform_query.get_mut(trigger.entity()) else {
+    let Ok((transform, mut networked_transform)) = transform_query.get_mut(trigger.target()) else {
         return;
     };
     networked_transform.target_position = transform.translation;

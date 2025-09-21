@@ -1,6 +1,6 @@
 use std::{any::TypeId, marker::PhantomData};
 
-use bevy::{prelude::*, utils::hashbrown::HashMap};
+use bevy::{platform::collections::HashMap, prelude::*};
 use rmp_serde::from_slice;
 use steamworks::networking_types::SendFlags;
 
@@ -42,7 +42,7 @@ fn networked_event_system<T: NetworkedEvent>(
 ) {
     for ev in networked_event_r.read() {
         if ev.emit_locally {
-            event_w.send(ev.event.clone());
+            event_w.write(ev.event.clone());
         }
         let _ = client.send_message_others(
             NetworkData::Event(

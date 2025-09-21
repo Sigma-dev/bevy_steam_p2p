@@ -101,7 +101,7 @@ impl SteamP2PClient {
         &self,
         data: &NetworkData,
         target: SteamId,
-        flags: SendFlags,
+        _flags: SendFlags,
     ) -> Result<(), String> {
         if !self.is_in_lobby() {
             return Err("Not in a lobby".to_string());

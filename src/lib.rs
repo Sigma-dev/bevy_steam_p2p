@@ -130,8 +130,8 @@ fn handle_joiner(
     mut evs: EventReader<SteamworksEvent>,
     networked_query: Query<(&NetworkIdentity, Option<&Transform>)>,
 ) {
-    for ev in evs.read() {
-        let SteamworksEvent::LobbyChatUpdate(update) = ev else {
+    for ev in evs.read().map(|SteamworksEvent::CallbackResult(a)| a) {
+        let CallbackResult::LobbyChatUpdate(update) = ev else {
             return;
         };
         if update.member_state_change == bevy_steamworks::ChatMemberStateChange::Entered {
@@ -185,7 +185,7 @@ fn handle_instantiate(
                 NetworkedMovable { speed: 10. },
             ));
         } else {
-            evs_unhandled.send(UnhandledInstantiation(data.clone()));
+            evs_unhandled.write(UnhandledInstantiation(data.clone()));
         }
     }
 }
@@ -200,7 +200,7 @@ fn handle_queued_instantiations(
             n.id.owner == queued.network_identity.id.owner
                 && n.id == queued.network_identity.parent_id.clone().unwrap()
         }) {
-            evs_network.send(NetworkInstantiation(queued.clone()));
+            evs_network.write(NetworkInstantiation(queued.clone()));
             return false;
         }
         return true;
@@ -218,14 +218,14 @@ fn handle_network_data(
     for ev in evs_network.read() {
         match ev.data.clone() {
             NetworkData::NetworkedAction(id, action_id, action_data) => {
-                ev_networked_action.send(NetworkedAction {
+                ev_networked_action.write(NetworkedAction {
                     network_identity: id,
                     action_id,
                     action_data,
                 });
             }
             NetworkData::TransformUpdate(id, position, rotation, scale) => {
-                ev_pos_update.send(TransformUpdate {
+                ev_pos_update.write(TransformUpdate {
                     network_identity: id,
                     position,
                     rotation,
@@ -240,7 +240,7 @@ fn handle_network_data(
                 println!("Debug message from {:?}: {}", ev.sender, message)
             }
             NetworkData::Instantiate(data) => {
-                ev_network_instantiation.send(NetworkInstantiation(data));
+                ev_network_instantiation.write(NetworkInstantiation(data));
             }
             NetworkData::Event(data, index) => {
                 let reader = &register.readers[index as usize];
@@ -265,7 +265,7 @@ fn receive_messages(client: Res<SteamP2PClient>, mut evs_network: EventWriter<Ne
         let data_try: Result<NetworkData, _> = rmp_serde::from_slice(&buf);
 
         if let Ok(data) = data_try {
-            evs_network.send(NetworkPacket { sender, data });
+            evs_network.write(NetworkPacket { sender, data });
         }
     }
 }
@@ -282,18 +282,18 @@ fn handle_channels(
         match channel_packet {
             ChannelPacket::LobbyJoined(lobby_id) => {
                 client.lobby_status = LobbyStatus::InLobby(lobby_id);
-                evs_joined.send(LobbyJoined { lobby_id });
+                evs_joined.write(LobbyJoined { lobby_id });
                 println!("Joined Lobby: {}", lobby_id.raw());
             }
             ChannelPacket::LobbyLeft => {
-                evs_left.send(LobbyLeft);
+                evs_left.write(LobbyLeft);
                 for entity in networked_query.iter() {
                     commands.entity(entity).despawn();
                 }
                 println!("Left Lobby")
             }
             ChannelPacket::NetworkPacket(network_packet) => {
-                evs_network.send(network_packet);
+                evs_network.write(network_packet);
             }
         }
     }
@@ -335,15 +335,15 @@ fn steam_events(
     mut commands: Commands,
     mut other_joined_w: EventWriter<OtherJoined>,
 ) {
-    for ev in evs.read() {
+    for ev in evs.read().map(|SteamworksEvent::CallbackResult(a)| a) {
         match ev {
-            SteamworksEvent::GameLobbyJoinRequested(info) => {
+            CallbackResult::GameLobbyJoinRequested(info) => {
                 println!("Trying to join: {}", info.lobby_steam_id.raw());
                 client.join_lobby(info.lobby_steam_id)
             }
-            SteamworksEvent::LobbyChatUpdate(info) => match info.member_state_change {
+            CallbackResult::LobbyChatUpdate(info) => match info.member_state_change {
                 ChatMemberStateChange::Entered => {
-                    other_joined_w.send(OtherJoined(info.user_changed));
+                    other_joined_w.write(OtherJoined(info.user_changed));
                 }
                 ChatMemberStateChange::Left | ChatMemberStateChange::Disconnected => {
                     println!("Other left lobby");
@@ -355,23 +355,63 @@ fn steam_events(
                 }
                 _ => println!(""),
             },
-            SteamworksEvent::SteamServersConnected(_) => println!("Connected to steam servers!"),
-            SteamworksEvent::AuthSessionTicketResponse(_) => println!("Ticket response"),
-            SteamworksEvent::DownloadItemResult(_) => println!("Download item result"),
-            SteamworksEvent::P2PSessionConnectFail(_) => println!("P2P Fail"),
-            SteamworksEvent::P2PSessionRequest(request) => client
-                .steam_client
-                .networking()
-                .accept_p2p_session(request.remote),
-            SteamworksEvent::PersonaStateChange(_) => {}
-            SteamworksEvent::SteamServerConnectFailure(_) => println!("Connection failed"),
-            SteamworksEvent::SteamServersDisconnected(_) => println!("Disconnected"),
-            SteamworksEvent::TicketForWebApiResponse(_) => println!("Ticket"),
-            SteamworksEvent::UserAchievementStored(_) => println!("Achievement stored"),
-            SteamworksEvent::UserStatsReceived(_) => println!("UserStatsReceived"),
-            SteamworksEvent::UserStatsStored(_) => println!("User stats stored"),
-            SteamworksEvent::ValidateAuthTicketResponse(_) => println!("Validate auth ticket"),
-            SteamworksEvent::LobbyChatMsg(_) => println!("Lobby chat message received"),
+            CallbackResult::SteamServersConnected(_) => println!("Connected to steam servers!"),
+            CallbackResult::AuthSessionTicketResponse(_) => println!("Ticket response"),
+            CallbackResult::DownloadItemResult(_) => println!("Download item result"),
+            CallbackResult::P2PSessionConnectFail(_) => println!("P2P Fail"),
+            CallbackResult::P2PSessionRequest(request) => {
+                client
+                    .steam_client
+                    .networking()
+                    .accept_p2p_session(request.remote);
+            }
+            CallbackResult::PersonaStateChange(_) => {}
+            CallbackResult::SteamServerConnectFailure(_) => println!("Connection failed"),
+            CallbackResult::SteamServersDisconnected(_) => println!("Disconnected"),
+            CallbackResult::TicketForWebApiResponse(_) => println!("Ticket"),
+            CallbackResult::UserAchievementStored(_) => println!("Achievement stored"),
+            CallbackResult::UserStatsReceived(_) => println!("UserStatsReceived"),
+            CallbackResult::UserStatsStored(_) => println!("User stats stored"),
+            CallbackResult::ValidateAuthTicketResponse(_) => println!("Validate auth ticket"),
+            CallbackResult::LobbyChatMsg(_) => println!("Lobby chat message received"),
+            CallbackResult::FloatingGamepadTextInputDismissed(_) => {
+                println!("Floating gamepad text input dismissed")
+            }
+            CallbackResult::GameOverlayActivated(_) => println!("Game overlay activated"),
+            CallbackResult::GamepadTextInputDismissed(_) => {
+                println!("Gamepad text input dismissed")
+            }
+            CallbackResult::GameRichPresenceJoinRequested(_) => {
+                println!("Game rich presence join requested")
+            }
+            CallbackResult::LobbyCreated(_) => println!("Lobby created"),
+            CallbackResult::LobbyDataUpdate(_) => println!("Lobby data update"),
+            CallbackResult::LobbyEnter(_) => println!("Lobby enter"),
+            CallbackResult::MicroTxnAuthorizationResponse(_) => {
+                println!("MicroTxn authorization response")
+            }
+            CallbackResult::NetConnectionStatusChanged(_) => {
+                println!("Net connection status changed")
+            }
+            CallbackResult::NetworkingMessagesSessionFailed(_) => {
+                println!("Networking messages session failed")
+            }
+            CallbackResult::NetworkingMessagesSessionRequest(_) => {
+                println!("Networking messages session request")
+            }
+            CallbackResult::RelayNetworkStatusCallback(_) => println!("Relay network status"),
+            CallbackResult::RemotePlayConnected(_) => println!("Remote play connected"),
+            CallbackResult::RemotePlayDisconnected(_) => println!("Remote play disconnected"),
+            CallbackResult::ScreenshotRequested(_) => println!("Screenshot requested"),
+            CallbackResult::ScreenshotReady(_) => println!("Screenshot ready"),
+            CallbackResult::UserAchievementIconFetched(_) => {
+                println!("User achievement icon fetched")
+            }
+            CallbackResult::GSClientApprove(_) => println!("GS client approve"),
+            CallbackResult::GSClientDeny(_) => println!("GS client deny"),
+            CallbackResult::GSClientKick(_) => println!("GS client kick"),
+            CallbackResult::GSClientGroupStatus(_) => println!("GS client group status"),
+            CallbackResult::NewUrlLaunchParameters(_) => println!("New URL launch parameters"),
         }
     }
 }
