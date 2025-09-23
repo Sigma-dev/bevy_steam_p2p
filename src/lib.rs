@@ -10,7 +10,7 @@ use steamworks::networking_types::NetConnectionEnd;
 pub mod client;
 pub mod networked_events;
 mod networked_movable;
-mod networked_transform;
+pub mod networked_transform;
 pub mod prelude;
 pub use client::SteamP2PClient;
 use steamworks::networking_types::SendFlags;
