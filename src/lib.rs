@@ -110,7 +110,7 @@ impl std::cmp::PartialEq<&str> for FilePath {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum NetworkData {
-    Handshake,
+    OtherJoined(SteamId),
     Event(Vec<u8>, u8),
     NetworkedAction(NetworkIdentity, u8, Vec<u8>), //NetworkId of receiver, id of action, data of action
     Instantiate(InstantiationData), //NetworkId of created object, optional network id of parent, starting position
@@ -215,6 +215,7 @@ fn handle_network_data(
     mut ev_network_instantiation: EventWriter<NetworkInstantiation>,
     mut ev_networked_action: EventWriter<NetworkedAction>,
     register: Res<NetworkedEventRegister>,
+    mut other_joined_w: EventWriter<OtherJoined>,
 ) {
     for ev in evs_network.read() {
         match ev.data.clone() {
@@ -234,8 +235,9 @@ fn handle_network_data(
                 });
             }
             NetworkData::Destroy(_) => println!("Destroyed"),
-            NetworkData::Handshake => {
-                println!("Received handshake");
+            NetworkData::OtherJoined(id) => {
+                println!("Other joined: {:?}", id);
+                other_joined_w.write(OtherJoined(id));
             }
             NetworkData::DebugMessage(message) => {
                 println!("Debug message from {:?}: {}", ev.sender, message)
@@ -284,6 +286,12 @@ fn handle_channels(
             ChannelPacket::LobbyJoined(lobby_id) => {
                 client.lobby_status = LobbyStatus::InLobby(lobby_id);
                 evs_joined.write(LobbyJoined { lobby_id });
+                client
+                    .send_message_others(
+                        NetworkData::OtherJoined(client.steam_client.user().steam_id()),
+                        SendFlags::RELIABLE,
+                    )
+                    .expect("Couldn't send other joined message");
                 println!("Joined Lobby: {}", lobby_id.raw());
             }
             ChannelPacket::LobbyLeft => {
@@ -334,7 +342,6 @@ fn steam_events(
     client: Res<SteamP2PClient>,
     network_query: Query<(Entity, &NetworkIdentity)>,
     mut commands: Commands,
-    mut other_joined_w: EventWriter<OtherJoined>,
 ) {
     for ev in evs.read().map(|SteamworksEvent::CallbackResult(a)| a) {
         match ev {
@@ -344,7 +351,7 @@ fn steam_events(
             }
             CallbackResult::LobbyChatUpdate(info) => match info.member_state_change {
                 ChatMemberStateChange::Entered => {
-                    other_joined_w.write(OtherJoined(info.user_changed));
+                    println!("Other joined lobby !!!");
                 }
                 ChatMemberStateChange::Left | ChatMemberStateChange::Disconnected => {
                     println!("Other left lobby");
@@ -354,7 +361,7 @@ fn steam_events(
                         }
                     }
                 }
-                _ => println!(""),
+                _ => println!("Lobby chat update: {:?}", info),
             },
             CallbackResult::SteamServersConnected(_) => println!("Connected to steam servers!"),
             CallbackResult::AuthSessionTicketResponse(_) => println!("Ticket response"),
