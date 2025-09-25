@@ -128,29 +128,24 @@ pub struct InstantiationData {
 
 fn handle_joiner(
     client: ResMut<SteamP2PClient>,
-    mut evs: EventReader<SteamworksEvent>,
+    mut evs: EventReader<OtherJoined>,
     networked_query: Query<(&NetworkIdentity, Option<&Transform>)>,
 ) {
-    for ev in evs.read().map(|SteamworksEvent::CallbackResult(a)| a) {
-        let CallbackResult::LobbyChatUpdate(update) = ev else {
-            return;
-        };
-        if update.member_state_change == bevy_steamworks::ChatMemberStateChange::Entered {
-            println!("Somebody joined your lobby: {:?}", update.user_changed);
-            if client.is_lobby_owner().unwrap() {
-                for (networked, transform) in networked_query.iter() {
-                    println!("Replicate: {:?}", networked);
-                    client
-                        .send_message(
-                            &NetworkData::Instantiate(InstantiationData {
-                                network_identity: networked.clone(),
-                                starting_transform: *transform.unwrap_or(&Transform::default()),
-                            }),
-                            update.user_changed,
-                            SendFlags::RELIABLE,
-                        )
-                        .expect("Couldn't send data to joiner");
-                }
+    for OtherJoined(id) in evs.read() {
+        println!("Somebody joined your lobby: {:?}", id);
+        if client.is_lobby_owner().unwrap() {
+            for (networked, transform) in networked_query.iter() {
+                println!("Replicate: {:?}", networked);
+                client
+                    .send_message(
+                        &NetworkData::Instantiate(InstantiationData {
+                            network_identity: networked.clone(),
+                            starting_transform: *transform.unwrap_or(&Transform::default()),
+                        }),
+                        *id,
+                        SendFlags::RELIABLE,
+                    )
+                    .expect("Couldn't send data to joiner");
             }
         }
     }
