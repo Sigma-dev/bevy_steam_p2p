@@ -4,7 +4,6 @@ use flume::{Receiver, Sender};
 use networked_events::register::{NetworkedEventRegister, NetworkedEventsPlugin};
 use networked_movable::{NetworkedMovable, NetworkedMovablePlugin};
 use networked_transform::{NetworkedTransform, NetworkedTransformPlugin, TransformUpdate};
-use serde::{Deserialize, Serialize};
 use steamworks::networking_types::NetConnectionEnd;
 
 pub mod client;
@@ -13,8 +12,8 @@ mod networked_movable;
 pub mod networked_transform;
 pub mod prelude;
 pub use client::SteamP2PClient;
-use steamworks::networking_types::SendFlags;
-use steamworks::SteamId;
+pub use serde::{Deserialize, Serialize};
+pub use steamworks::{networking_types::SendFlags, SteamId};
 
 use crate::client::{ChannelPacket, LobbyStatus};
 pub struct SteamP2PPlugin;
@@ -80,7 +79,7 @@ pub struct NetworkPacket {
     pub sender: SteamId,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
 pub struct NetworkId {
     pub owner: SteamId,
     pub index: u32,
