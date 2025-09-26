@@ -4,6 +4,6 @@ pub use crate::{
         register::NetworkedEvents,
     },
     networked_transform::NetworkedTransform,
-    FilePath, LobbyJoined, NetworkIdentity, OtherJoined, SteamId, SteamP2PClient,
+    FilePath, LobbyJoined, NetworkIdentity, OtherJoined, SteamId, SteamP2PClient, SteamP2PPlugin,
     UnhandledInstantiation,
 };
