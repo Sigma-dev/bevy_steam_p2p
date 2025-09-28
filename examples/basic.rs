@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use bevy_steam_p2p::{
     networked_events::{event::Networked, register::NetworkedEvents},
-    FilePath, NetworkData, OtherJoined,
+    FilePath, NetworkData,
 };
 use bevy_steam_p2p::{SteamP2PClient, SteamP2PPlugin};
 use serde::{Deserialize, Serialize};

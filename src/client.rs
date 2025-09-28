@@ -113,6 +113,11 @@ impl SteamP2PClient {
             .send_p2p_packet(target, SendType::Reliable, data_arr);
         return Ok(());
     }
+    pub fn get_lobby_member_count(&self) -> Result<usize, String> {
+        let lobby_id = self.get_lobby_id()?;
+        let info = self.steam_client.matchmaking().lobby_member_count(lobby_id);
+        return Ok(info);
+    }
     pub fn is_in_lobby(&self) -> bool {
         return self.lobby_status != LobbyStatus::OutOfLobby;
     }
