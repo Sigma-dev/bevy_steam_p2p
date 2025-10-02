@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-bevy = { version = "0.16.0", features = ["serialize"] }
+bevy = { version = "0.17.0", features = ["serialize"] }
 bevy-steamworks = { git = "https://github.com/HouraiTeahouse/bevy_steamworks.git", features = ["serde"] }
 steamworks = "0.12.2"
 flume = "0.11.0"

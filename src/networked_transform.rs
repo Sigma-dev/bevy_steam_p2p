@@ -38,7 +38,7 @@ impl NetworkedTransform {
     }
 }
 
-#[derive(Event, Debug)]
+#[derive(Message, Debug)]
 pub(crate) struct TransformUpdate {
     pub network_identity: NetworkIdentity,
     pub position: Option<Vec3>,
@@ -52,13 +52,13 @@ impl Plugin for NetworkedTransformPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(FixedUpdate, handle_networked_transform)
             .add_observer(on_add)
-            .add_event::<TransformUpdate>();
+            .add_message::<TransformUpdate>();
     }
 }
 
 fn handle_networked_transform(
     client: Res<SteamP2PClient>,
-    mut evs_update: EventReader<TransformUpdate>,
+    mut evs_update: MessageReader<TransformUpdate>,
     mut networked_transform_query: Query<(
         &mut Transform,
         &NetworkIdentity,
@@ -123,10 +123,10 @@ fn handle_networked_transform(
 }
 
 fn on_add(
-    trigger: Trigger<OnAdd, NetworkedTransform>,
+    trigger: On<Add, NetworkedTransform>,
     mut transform_query: Query<(&Transform, &mut NetworkedTransform)>,
 ) {
-    let Ok((transform, mut networked_transform)) = transform_query.get_mut(trigger.target()) else {
+    let Ok((transform, mut networked_transform)) = transform_query.get_mut(trigger.entity) else {
         return;
     };
     networked_transform.target_position = transform.translation;

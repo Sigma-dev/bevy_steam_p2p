@@ -1,14 +1,14 @@
 use bevy::prelude::*;
 use bevy_steamworks::*;
 use flume::{Receiver, Sender};
-use networked_events::register::{NetworkedEventRegister, NetworkedEventsPlugin};
+use networked_messages::register::{NetworkedMessageRegister, NetworkedMessagesPlugin};
 use networked_movable::{NetworkedMovable, NetworkedMovablePlugin};
 use networked_transform::{NetworkedTransform, NetworkedTransformPlugin, TransformUpdate};
 use serde::{Deserialize, Serialize};
 use steamworks::networking_types::NetConnectionEnd;
 
 pub mod client;
-pub mod networked_events;
+pub mod networked_messages;
 mod networked_movable;
 pub mod networked_transform;
 pub mod prelude;
@@ -22,7 +22,7 @@ impl Plugin for SteamP2PPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(SteamworksPlugin::init_app(480).unwrap())
             .add_plugins((
-                NetworkedEventsPlugin,
+                NetworkedMessagesPlugin,
                 NetworkedMovablePlugin,
                 NetworkedTransformPlugin,
             ))
@@ -39,41 +39,41 @@ impl Plugin for SteamP2PPlugin {
                     handle_joiner,
                 ),
             )
-            .add_event::<LobbyJoined>()
-            .add_event::<NetworkPacket>()
-            .add_event::<UnhandledInstantiation>()
-            .add_event::<LobbyLeft>()
-            .add_event::<OtherJoined>()
-            .add_event::<NetworkedAction>()
-            .add_event::<NetworkInstantiation>();
+            .add_message::<LobbyJoined>()
+            .add_message::<NetworkPacket>()
+            .add_message::<UnhandledInstantiation>()
+            .add_message::<LobbyLeft>()
+            .add_message::<OtherJoined>()
+            .add_message::<NetworkedAction>()
+            .add_message::<NetworkInstantiation>();
     }
 }
 
-#[derive(Event)]
+#[derive(Message)]
 pub struct LobbyJoined {
     pub lobby_id: LobbyId,
 }
 
-#[derive(Event)]
+#[derive(Message)]
 pub struct OtherJoined(pub SteamId);
 
-#[derive(Event)]
+#[derive(Message)]
 pub struct LobbyLeft;
 
-#[derive(Event)]
+#[derive(Message)]
 pub struct NetworkedAction {
     pub network_identity: NetworkIdentity,
     pub action_id: u8,
     pub action_data: Vec<u8>,
 }
 
-#[derive(Event)]
+#[derive(Message)]
 pub struct NetworkInstantiation(pub InstantiationData);
 
-#[derive(Event)]
+#[derive(Message)]
 pub struct UnhandledInstantiation(pub InstantiationData);
 
-#[derive(Event, Clone, Debug)]
+#[derive(Message, Clone, Debug)]
 pub struct NetworkPacket {
     pub data: NetworkData,
     pub sender: SteamId,
@@ -110,7 +110,7 @@ impl std::cmp::PartialEq<&str> for FilePath {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum NetworkData {
     OtherJoined(SteamId),
-    Event(Vec<u8>, u8),
+    Message(Vec<u8>, u8),
     NetworkedAction(NetworkIdentity, u8, Vec<u8>), //NetworkId of receiver, id of action, data of action
     Instantiate(InstantiationData), //NetworkId of created object, optional network id of parent, starting position
     TransformUpdate(NetworkIdentity, Option<Vec3>, Option<Quat>, Option<Vec3>), //NetworkId of receiver, new position
@@ -127,7 +127,7 @@ pub struct InstantiationData {
 
 fn handle_joiner(
     client: ResMut<SteamP2PClient>,
-    mut evs: EventReader<OtherJoined>,
+    mut evs: MessageReader<OtherJoined>,
     networked_query: Query<(&NetworkIdentity, Option<&Transform>)>,
 ) {
     for OtherJoined(id) in evs.read() {
@@ -152,8 +152,8 @@ fn handle_joiner(
 
 fn handle_instantiate(
     mut client: ResMut<SteamP2PClient>,
-    mut evs_network: EventReader<NetworkInstantiation>,
-    mut evs_unhandled: EventWriter<UnhandledInstantiation>,
+    mut evs_network: MessageReader<NetworkInstantiation>,
+    mut evs_unhandled: MessageWriter<UnhandledInstantiation>,
     networked_query: Query<&NetworkIdentity>,
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
@@ -187,7 +187,7 @@ fn handle_instantiate(
 
 fn handle_queued_instantiations(
     mut client: ResMut<SteamP2PClient>,
-    mut evs_network: EventWriter<NetworkInstantiation>,
+    mut evs_network: MessageWriter<NetworkInstantiation>,
     networked_query: Query<&NetworkIdentity>,
 ) {
     client.get_instantiation_queue().retain(|queued| {
@@ -204,12 +204,12 @@ fn handle_queued_instantiations(
 
 fn handle_network_data(
     mut commands: Commands,
-    mut evs_network: EventReader<NetworkPacket>,
-    mut ev_pos_update: EventWriter<TransformUpdate>,
-    mut ev_network_instantiation: EventWriter<NetworkInstantiation>,
-    mut ev_networked_action: EventWriter<NetworkedAction>,
-    register: Res<NetworkedEventRegister>,
-    mut other_joined_w: EventWriter<OtherJoined>,
+    mut evs_network: MessageReader<NetworkPacket>,
+    mut ev_pos_update: MessageWriter<TransformUpdate>,
+    mut ev_network_instantiation: MessageWriter<NetworkInstantiation>,
+    mut ev_networked_action: MessageWriter<NetworkedAction>,
+    register: Res<NetworkedMessageRegister>,
+    mut other_joined_w: MessageWriter<OtherJoined>,
 ) {
     for ev in evs_network.read() {
         match ev.data.clone() {
@@ -239,7 +239,7 @@ fn handle_network_data(
             NetworkData::Instantiate(data) => {
                 ev_network_instantiation.write(NetworkInstantiation(data));
             }
-            NetworkData::Event(data, index) => {
+            NetworkData::Message(data, index) => {
                 let reader = &register.readers[index as usize];
                 reader(&data, &mut commands)
             }
@@ -248,7 +248,7 @@ fn handle_network_data(
     }
 }
 
-fn receive_messages(client: Res<SteamP2PClient>, mut evs_network: EventWriter<NetworkPacket>) {
+fn receive_messages(client: Res<SteamP2PClient>, mut evs_network: MessageWriter<NetworkPacket>) {
     while client
         .steam_client
         .networking()
@@ -269,9 +269,9 @@ fn receive_messages(client: Res<SteamP2PClient>, mut evs_network: EventWriter<Ne
 
 fn handle_channels(
     mut client: ResMut<SteamP2PClient>,
-    mut evs_joined: EventWriter<LobbyJoined>,
-    mut evs_network: EventWriter<NetworkPacket>,
-    mut evs_left: EventWriter<LobbyLeft>,
+    mut evs_joined: MessageWriter<LobbyJoined>,
+    mut evs_network: MessageWriter<NetworkPacket>,
+    mut evs_left: MessageWriter<LobbyLeft>,
     mut commands: Commands,
     networked_query: Query<Entity, With<NetworkIdentity>>,
 ) {
@@ -332,12 +332,12 @@ fn steam_start(steam_client: Res<Client>, mut commands: Commands) {
 }
 
 fn steam_events(
-    mut evs: EventReader<SteamworksEvent>,
+    mut msgs: MessageReader<SteamworksEvent>,
     client: Res<SteamP2PClient>,
     network_query: Query<(Entity, &NetworkIdentity)>,
     mut commands: Commands,
 ) {
-    for ev in evs.read().map(|SteamworksEvent::CallbackResult(a)| a) {
+    for ev in msgs.read().map(|SteamworksEvent::CallbackResult(a)| a) {
         match ev {
             CallbackResult::GameLobbyJoinRequested(info) => {
                 println!("Trying to join: {}", info.lobby_steam_id.raw());

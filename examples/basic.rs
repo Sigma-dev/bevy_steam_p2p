@@ -1,14 +1,14 @@
 use bevy::prelude::*;
 use bevy_steam_p2p::{
-    networked_events::{event::Networked, register::NetworkedEvents},
+    networked_messages::{message::Networked, register::NetworkedMessages},
     FilePath, NetworkData,
 };
 use bevy_steam_p2p::{SteamP2PClient, SteamP2PPlugin};
 use serde::{Deserialize, Serialize};
 use steamworks::networking_types::SendFlags;
 
-#[derive(Event, Serialize, Deserialize, Clone, Copy)]
-struct TestEvent {
+#[derive(Message, Serialize, Deserialize, Clone, Copy)]
+struct TestMessage {
     n: u32,
 }
 
@@ -18,7 +18,7 @@ fn main() {
         .add_plugins(DefaultPlugins)
         .add_systems(Startup, startup)
         .add_systems(Update, (update, listener))
-        .add_networked_event::<TestEvent>()
+        .add_networked_message::<TestMessage>()
         .run();
 }
 
@@ -37,7 +37,7 @@ fn startup(mut commands: Commands) {
 fn update(
     mut client: ResMut<SteamP2PClient>,
     keys: Res<ButtonInput<KeyCode>>,
-    mut test_w: EventWriter<Networked<TestEvent>>,
+    mut test_w: MessageWriter<Networked<TestMessage>>,
 ) {
     if keys.just_pressed(KeyCode::KeyC) {
         client.create_lobby(8);
@@ -60,12 +60,12 @@ fn update(
             .expect("Couldn't spawn instantiation example");
     }
     if keys.just_pressed(KeyCode::KeyY) {
-        test_w.write(Networked::new(TestEvent { n: 42 }));
+        test_w.write(Networked::new(TestMessage { n: 42 }));
     }
 }
 
-fn listener(mut test_r: EventReader<TestEvent>) {
+fn listener(mut test_r: MessageReader<TestMessage>) {
     for test in test_r.read() {
-        println!("Received test event: {}", test.n);
+        println!("Received test message: {}", test.n);
     }
 }
